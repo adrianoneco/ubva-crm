@@ -1,9 +1,9 @@
 import { db } from '../db'
-import { webglassKanban } from '../db/schema'
+import { webglassBot } from '../db/schema'
 import { eq } from 'drizzle-orm'
 
 export async function getKanbanUsers() {
-  return await db.select().from(webglassKanban).orderBy(webglassKanban.kanbanStep)
+  return await db.select().from(webglassBot).orderBy(webglassBot.kanbanStep)
 }
 
 export async function createKanbanUser(data: {
@@ -14,7 +14,7 @@ export async function createKanbanUser(data: {
   role?: string
   kanbanStep?: number
 }) {
-  const [user] = await db.insert(webglassKanban).values({
+  const [user] = await db.insert(webglassBot).values({
     id: data.id || undefined,
     name: data.name,
     avatar: data.avatar || null,
@@ -39,14 +39,14 @@ export async function updateKanbanUser(
   }>
 ) {
   const [user] = await db
-    .update(webglassKanban)
+    .update(webglassBot)
     .set(data as any)
-    .where(eq(webglassKanban.id, id))
+    .where(eq(webglassBot.id, id))
     .returning()
 
   return user
 }
 
 export async function deleteKanbanUser(id: string) {
-  await db.delete(webglassKanban).where(eq(webglassKanban.id, id))
+  await db.delete(webglassBot).where(eq(webglassBot.id, id))
 }

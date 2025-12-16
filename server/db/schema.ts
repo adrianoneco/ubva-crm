@@ -22,8 +22,8 @@ export const kanbanUsers = pgTable('kanban_users', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
-// WebGlass kanban table with UUID id
-export const webglassKanban = pgTable('webglass_kanban', {
+// WebGlass bot table with UUID id
+export const webglassBot = pgTable('webglass_bot', {
   id: text('id').notNull().primaryKey(),
   phone: text('phone'),
   step: integer('step'),
@@ -34,16 +34,6 @@ export const webglassKanban = pgTable('webglass_kanban', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   kanbanStep: integer('kanban_step').default(0),
   avatar: text('avatar'),
-})
-
-// Meeting schedules table (for WebGlass Tab 2)
-export const meetingSchedules = pgTable('meeting_schedules', {
-  id: serial('id').primaryKey(),
-  kanbanUserId: integer('kanban_user_id').references(() => kanbanUsers.id),
-  date: timestamp('date').notNull(),
-  timeSlot: varchar('time_slot', { length: 50 }).notNull(),
-  isAvailable: boolean('is_available').notNull().default(true),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
 // Appointments table for Agendamento (UUID primary key)

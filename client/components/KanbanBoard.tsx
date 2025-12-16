@@ -30,11 +30,12 @@ const COLUMNS = [
   { id: 0, title: 'Início' },
   { id: 1, title: 'Cadastro' },
   { id: 2, title: 'Agendamento' },
-  { id: 3, title: 'Treinamento 1' },
-  { id: 4, title: 'Treinamento 2' },
-  { id: 5, title: 'Enviar Pedido Teste' },
-  { id: 6, title: 'Feedback' },
-  { id: 7, title: 'Confirmação' },
+  { id: 3, title: 'Instalação' },
+  { id: 4, title: 'Treinamento 1' },
+  { id: 5, title: 'Treinamento 2' },
+  { id: 6, title: 'Enviar Pedido Teste' },
+  { id: 7, title: 'Feedback' },
+  { id: 8, title: 'Confirmação' },
 ]
 
 export default function KanbanBoard() {
