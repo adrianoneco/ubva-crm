@@ -112,7 +112,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
               </svg>
-              <span className="font-medium">Kanban Board</span>
+              <span className="font-medium">WebGlass</span>
             </button>
 
             <button onClick={() => navigate('/contacts')} className={navItemClass('/contacts')}>
@@ -138,7 +138,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex space-x-1">
                 <button onClick={() => navigate('/webglass')} className={`py-4 px-6 font-medium text-sm transition-all rounded-t-xl relative ${location.pathname === '/webglass' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
-                  <span className="flex items-center gap-2">Kanban Board</span>
+                  <span className="flex items-center gap-2">WebGlass</span>
                 </button>
                 <button onClick={() => navigate('/agendamento')} className={`py-4 px-6 font-medium text-sm transition-all rounded-t-xl relative ${location.pathname === '/agendamento' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
                   <span className="flex items-center gap-2">Agendamento</span>

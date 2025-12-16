@@ -29,8 +29,8 @@ export interface KanbanUser {
 const COLUMNS = [
   { id: 0, title: 'Início' },
   { id: 1, title: 'Cadastro' },
-  { id: 2, title: 'Agendamento' },
-  { id: 3, title: 'Instalação' },
+  { id: 2, title: 'Instalação' },
+  { id: 3, title: 'Agendamento' },
   { id: 4, title: 'Treinamento 1' },
   { id: 5, title: 'Treinamento 2' },
   { id: 6, title: 'Enviar Pedido Teste' },
@@ -153,7 +153,7 @@ export default function KanbanBoard() {
     <div>
       <div className="mb-6 flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Kanban Board</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">WebGlass</h2>
           <p className="text-gray-600 dark:text-gray-400 text-sm">Gerencie o progresso dos seus contatos</p>
         </div>
         <button
