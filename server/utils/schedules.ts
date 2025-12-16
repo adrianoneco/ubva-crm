@@ -1,71 +1,83 @@
 import { db } from '../db'
-import { meetingSchedules } from '../db/schema'
+import { appointments } from '../db/schema'
 import { eq, and, gte, lte } from 'drizzle-orm'
 
 export async function getSchedules(startDate?: Date, endDate?: Date) {
   if (startDate && endDate) {
     return await db
       .select()
-      .from(meetingSchedules)
+      .from(appointments)
       .where(
         and(
-          gte(meetingSchedules.date, startDate),
-          lte(meetingSchedules.date, endDate)
+          gte(appointments.date_time, startDate),
+          lte(appointments.date_time, endDate)
         )
       )
   }
-  return await db.select().from(meetingSchedules)
+  return await db.select().from(appointments)
 }
 
 export async function createSchedule(data: {
-  kanbanUserId?: number
-  date: Date
-  timeSlot: string
-  isAvailable: boolean
+  title?: string
+  date_time: Date
+  duration_minutes?: number
+  customer_name?: string
+  notes?: string
+  status?: string
+  phone?: string
+  meet_link?: string
 }) {
-  const [schedule] = await db.insert(meetingSchedules).values({
-    kanbanUserId: data.kanbanUserId || null,
-    date: data.date,
-    timeSlot: data.timeSlot,
-    isAvailable: data.isAvailable,
+  const [schedule] = await db.insert(appointments).values({
+    title: data.title || null,
+    date_time: data.date_time,
+    duration_minutes: data.duration_minutes || 30,
+    customer_name: data.customer_name || null,
+    notes: data.notes || null,
+    status: data.status || 'disponivel',
+    phone: data.phone || null,
+    meet_link: data.meet_link || null,
   }).returning()
 
   return schedule
 }
 
 export async function updateSchedule(
-  id: number,
+  id: string,
   data: Partial<{
-    kanbanUserId: number
-    date: Date
-    timeSlot: string
-    isAvailable: boolean
+    title: string
+    date_time: Date
+    duration_minutes: number
+    customer_name: string
+    notes: string
+    status: string
+    phone: string
+    meet_link: string
   }>
 ) {
   const [schedule] = await db
-    .update(meetingSchedules)
+    .update(appointments)
     .set(data)
-    .where(eq(meetingSchedules.id, id))
+    .where(eq(appointments.id, id))
     .returning()
 
   return schedule
 }
 
-export async function deleteSchedule(id: number) {
-  await db.delete(meetingSchedules).where(eq(meetingSchedules.id, id))
+export async function deleteSchedule(id: string) {
+  await db.delete(appointments).where(eq(appointments.id, id))
 }
 
-export async function toggleScheduleAvailability(id: number) {
-  const [schedule] = await db.select().from(meetingSchedules).where(eq(meetingSchedules.id, id))
+export async function toggleScheduleAvailability(id: string) {
+  const [schedule] = await db.select().from(appointments).where(eq(appointments.id, id))
   
   if (!schedule) {
     throw new Error('Schedule not found')
   }
 
   const [updated] = await db
-    .update(meetingSchedules)
-    .set({ isAvailable: !schedule.isAvailable })
-    .where(eq(meetingSchedules.id, id))
+    .update(appointments)
+    .set({ status: schedule.status === 'disponivel' ? 'indisponivel' : 'disponivel' })
+    .where(eq(appointments.id, id))
     .returning()
 
   return updated
