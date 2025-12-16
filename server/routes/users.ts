@@ -3,7 +3,7 @@ import { getUsers, createUser } from '../utils/users'
 
 const router = Router()
 
-router.get('/', async (req, res) => {
+router.get('/', async (_req, res) => {
   try {
     const users = await getUsers()
     res.json(users)

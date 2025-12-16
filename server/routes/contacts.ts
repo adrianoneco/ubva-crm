@@ -3,7 +3,7 @@ import { getContacts, createContact, updateContact, deleteContact } from '../uti
 
 const router = Router()
 
-router.get('/', async (req, res) => {
+router.get('/', async (_req, res) => {
   try {
     const contacts = await getContacts()
     res.json(contacts)
