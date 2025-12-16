@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import MainLayout from '../components/MainLayout'
-import Papa from 'papaparse'
-import * as XLSX from 'xlsx'
+import * as Papa from 'papaparse'
+
 
 interface Contact {
   id: string
@@ -17,8 +17,6 @@ interface Contact {
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([])
   const [filterType, setFilterType] = useState<string>('all')
-  const [editing, setEditing] = useState<Contact | null>(null)
-  const [showForm, setShowForm] = useState(false)
 
   // Import modal state
   const [importOpen, setImportOpen] = useState(false)
@@ -31,6 +29,11 @@ export default function ContactsPage() {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<'name'|'recent'>('name')
 
+  // Modal for add/edit contact
+  const [showModal, setShowModal] = useState(false)
+  const [modalContact, setModalContact] = useState<Contact | null>(null)
+  const [modalAvatarFile, setModalAvatarFile] = useState<File | null>(null)
+
   useEffect(() => {
     fetchContacts()
   }, [])
@@ -41,25 +44,40 @@ export default function ContactsPage() {
     setContacts(data)
   }
 
-  const save = async (e: any) => {
+  const openNewModal = () => { setModalContact(null); setModalAvatarFile(null); setShowModal(true) }
+  const openEditModal = (c: Contact) => { setModalContact(c); setModalAvatarFile(null); setShowModal(true) }
+
+  const handleModalCancel = () => { setShowModal(false); setModalContact(null); setModalAvatarFile(null) }
+
+  const handleModalSave = async (e: any) => {
     e.preventDefault()
     const form = e.target
-    const id = editing?.id
     const payload = {
       name: form.name.value,
-      email: form.email.value,
-      phone: form.phone.value,
-      company: form.company.value,
-      type: form.type.value,
+      email: form.email.value || null,
+      phone: form.phone.value || null,
+      company: form.company.value || null,
+      type: form.type.value || 'default',
     }
 
-    if (id) {
-      await fetch(`/api/contacts/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
-    } else {
-      await fetch(`/api/contacts`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+    try {
+      if (modalContact && modalContact.id) {
+        const id = modalContact.id
+        await fetch(`/api/contacts/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+        if (modalAvatarFile) await uploadAvatar(id, modalAvatarFile, payload.type || 'default')
+      } else {
+        const res = await fetch('/api/contacts', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+        const created = await res.json()
+        if (modalAvatarFile) await uploadAvatar(created.id, modalAvatarFile, created.type || 'default')
+      }
+    } catch (err) {
+      console.error('Save contact failed', err)
+      alert('Erro ao salvar contato')
     }
-    setShowForm(false)
-    setEditing(null)
+
+    setShowModal(false)
+    setModalContact(null)
+    setModalAvatarFile(null)
     fetchContacts()
   }
 
@@ -115,24 +133,12 @@ export default function ContactsPage() {
                 <option value="all">Todos</option>
                 {Object.keys(grouped).map(k => <option key={k} value={k}>{k}</option>)}
               </select>
-              <button onClick={() => { setEditing(null); setShowForm(true) }} className="px-4 py-2 rounded-lg bg-blue-600 text-white">Novo</button>
+              <button onClick={openNewModal} className="px-4 py-2 rounded-lg bg-blue-600 text-white">Novo</button>
               <button onClick={() => setImportOpen(true)} className="px-4 py-2 rounded-lg bg-emerald-500 text-white" title="Importar CSV / XLSX">Importar</button>
             </div>
           </div>
 
-          {showForm && (
-            <form onSubmit={save} className="grid grid-cols-2 gap-4 mb-6">
-              <input name="name" defaultValue={editing?.name} placeholder="Nome" required className="px-3 py-2 rounded-lg border" />
-              <input name="email" defaultValue={editing?.email} placeholder="Email" className="px-3 py-2 rounded-lg border" />
-              <input name="phone" defaultValue={editing?.phone} placeholder="Telefone" className="px-3 py-2 rounded-lg border" />
-              <input name="company" defaultValue={editing?.company} placeholder="Empresa" className="px-3 py-2 rounded-lg border" />
-              <input name="type" defaultValue={editing?.type || 'default'} placeholder="Tipo" className="px-3 py-2 rounded-lg border" />
-              <div className="col-span-2 flex justify-end gap-2">
-                <button type="button" onClick={() => { setShowForm(false); setEditing(null) }} className="px-3 py-2 rounded-lg">Cancelar</button>
-                <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white">Salvar</button>
-              </div>
-            </form>
-          )}
+
 
           <div className="grid grid-cols-1 gap-6">
             {Object.entries(grouped).filter(([k]) => filterType === 'all' || k === filterType).map(([type, items]) => {
@@ -182,7 +188,7 @@ export default function ContactsPage() {
                                 <svg className="w-4 h-4 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v4a1 1 0 001 1h3m10 0h3a1 1 0 001-1V7M16 3H8v4h8V3z" /></svg>
                               </label>
                               <div className="flex gap-2">
-                                <button onClick={() => { setEditing(c); setShowForm(true) }} className="px-2 py-1 rounded-md text-sm bg-blue-50 text-blue-600 hover:bg-blue-100">Editar</button>
+                                <button onClick={() => openEditModal(c)} className="px-2 py-1 rounded-md text-sm bg-blue-50 text-blue-600 hover:bg-blue-100">Editar</button>
                                 <button onClick={() => remove(c.id)} className="px-2 py-1 rounded-md text-sm text-red-600 hover:bg-red-50">Excluir</button>
                               </div>
                             </div>
@@ -218,6 +224,8 @@ export default function ContactsPage() {
                       setMapping({ name: Object.keys(rows[0] || {})[0] || null, email: Object.keys(rows[0] || {})[1] || null, phone: null, company: null, type: null })
                     } else {
                       const ab = await file.arrayBuffer()
+                      // @ts-ignore - dynamic import for xlsx (types may not be found at build time)
+                      const XLSX = (await import('xlsx')) as any
                       const wb = XLSX.read(ab, { type: 'array' })
                       const sheet = wb.Sheets[wb.SheetNames[0]]
                       const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' }) as any[]
@@ -323,6 +331,33 @@ export default function ContactsPage() {
                 {parsedRows.length === 0 && (
                   <div className="text-sm text-gray-500">Carregue um arquivo CSV ou XLSX para começar. O parser detectará os cabeçalhos automaticamente.</div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Contact modal */}
+          {showModal && (
+            <div className="fixed inset-0 z-60 flex items-start justify-center p-6">
+              <div className="absolute inset-0 bg-black/40" onClick={handleModalCancel} />
+              <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg w-full max-w-md p-6 border border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-semibold mb-4">{modalContact ? 'Editar contato' : 'Novo contato'}</h3>
+                <form onSubmit={handleModalSave} className="space-y-3">
+                  <input name="name" defaultValue={modalContact?.name || ''} placeholder="Nome" required className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-gray-700" />
+                  <input name="email" defaultValue={modalContact?.email || ''} placeholder="Email" className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-gray-700" />
+                  <input name="phone" defaultValue={modalContact?.phone || ''} placeholder="Telefone" className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-gray-700" />
+                  <input name="company" defaultValue={modalContact?.company || ''} placeholder="Empresa" className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-gray-700" />
+                  <input name="type" defaultValue={modalContact?.type || 'default'} placeholder="Tipo" className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-gray-700" />
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Avatar (opcional)</label>
+                    <input type="file" accept="image/*" onChange={e => setModalAvatarFile(e.target.files?.[0] || null)} />
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <button type="button" onClick={handleModalCancel} className="px-3 py-2 rounded-lg">Cancelar</button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white">Salvar</button>
+                  </div>
+                </form>
               </div>
             </div>
           )}

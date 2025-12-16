@@ -46,6 +46,11 @@ export default function Settings() {
     localStorage.setItem('theme', t === 'system' ? '' : t)
   }
 
+  useEffect(() => {
+    // apply immediately when user clicks theme buttons
+    applyTheme(theme)
+  }, [theme])
+
   const save = () => {
     localStorage.setItem('ubva_settings', JSON.stringify({ timezone, theme, days, startTime, endTime, intervalMinutes }))
     applyTheme(theme)

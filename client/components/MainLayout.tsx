@@ -2,25 +2,31 @@ import { ReactNode, useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 export default function MainLayout({ children }: { children: ReactNode }) {
-  const [darkMode, setDarkMode] = useState(() => {
+  // theme can be 'system' | 'light' | 'dark'
+  const [theme, setTheme] = useState<'system'|'light'|'dark'>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') === 'dark' ||
-        (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)
+      return (localStorage.getItem('theme') as 'system'|'light'|'dark') || 'system'
     }
-    return false
+    return 'system'
   })
   const navigate = useNavigate()
   const location = useLocation()
 
   useEffect(() => {
-    if (darkMode) document.documentElement.classList.add('dark')
-    else document.documentElement.classList.remove('dark')
-  }, [darkMode])
+    // apply computed class based on theme value
+    if (theme === 'dark') document.documentElement.classList.add('dark')
+    else if (theme === 'light') document.documentElement.classList.remove('dark')
+    else {
+      // system: follow prefers-color-scheme
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark')
+      else document.documentElement.classList.remove('dark')
+    }
+  }, [theme])
 
   const toggleDarkMode = () => {
-    const newMode = !darkMode
-    setDarkMode(newMode)
-    localStorage.setItem('theme', newMode ? 'dark' : 'light')
+    const newTheme = theme === 'dark' ? 'light' : 'dark'
+    setTheme(newTheme)
+    localStorage.setItem('theme', newTheme)
   }
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -60,9 +66,9 @@ export default function MainLayout({ children }: { children: ReactNode }) {
               <button
                 onClick={toggleDarkMode}
                 className="px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all"
-                title={darkMode ? 'Tema claro' : 'Tema escuro'}
+                title={theme === 'dark' ? 'Tema claro' : 'Tema escuro'}
               >
-                {darkMode ? (
+                {theme === 'dark' ? (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                   </svg>
