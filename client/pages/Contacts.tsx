@@ -167,12 +167,20 @@ export default function ContactsPage() {
     return n.split(' ').map(s => s[0]).slice(0,2).join('').toUpperCase()
   }
 
+  const searchQuery = search.toLowerCase().trim()
+  const isContactVisible = (c: Contact) => {
+    if (!searchQuery) return true
+    return (c.name || '').toLowerCase().includes(searchQuery) || (c.email || '').toLowerCase().includes(searchQuery) || (c.company || '').toLowerCase().includes(searchQuery)
+  }
+
+  const visibleCount = Object.entries(grouped).filter(([k]) => filterType === 'all' || k === filterType).reduce((acc, [, items]) => acc + items.filter(isContactVisible).length, 0)
+
   return (
     <MainLayout>
-      <div className="flex gap-6">
+      <div className="flex gap-6 min-h-screen h-screen">
         {/* Sidebar - Broadcast Lists */}
         <div className="w-64 flex-shrink-0">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 border border-gray-200 dark:border-gray-700 sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 border border-gray-200 dark:border-gray-700 h-screen sticky top-0 overflow-y-auto">
             <button 
               onClick={() => setShowNewListModal(true)}
               className="w-full px-4 py-2.5 rounded-lg bg-gradient-to-r from-primary-500 to-primary-600 text-white hover:from-primary-600 hover:to-primary-700 transition-all font-medium shadow-lg shadow-primary-500/30 flex items-center justify-center gap-2 mb-6"
@@ -223,7 +231,7 @@ export default function ContactsPage() {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 space-y-8">
+        <div className="flex-1 space-y-8 h-screen overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -275,8 +283,22 @@ export default function ContactsPage() {
         </div>
 
         {/* Contacts Grid */}
-        <div className="space-y-6">
-            {Object.entries(grouped).filter(([k]) => filterType === 'all' || k === filterType).map(([type, items]) => {
+        <div className="flex-1 overflow-y-auto">
+          <div className="space-y-6 p-4">
+            {visibleCount === 0 ? (
+              <div className="text-center py-12">
+                <svg className="w-12 h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                <p className="text-lg font-medium text-gray-700 dark:text-gray-300">Nenhum contato encontrado.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Crie um novo contato ou importe um arquivo.</p>
+                <div className="flex items-center justify-center gap-2 mt-4">
+                  <button onClick={openNewModal} className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-primary-500 to-primary-600 text-white">Novo Contato</button>
+                  <button onClick={() => setImportOpen(true)} className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 text-white">Importar</button>
+                </div>
+              </div>
+            ) : (
+              Object.entries(grouped).filter(([k]) => filterType === 'all' || k === filterType).map(([type, items]) => {
               const visible = items
                 .filter(c => {
                   const q = search.toLowerCase().trim()
@@ -364,8 +386,10 @@ export default function ContactsPage() {
                   )}
                 </div>
               )
-            })}
+            })
+            )}
           </div>
+        </div>
 
           {/* Import modal */}
           {importOpen && (
