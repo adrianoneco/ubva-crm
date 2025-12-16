@@ -55,6 +55,26 @@ router.post('/:id/avatar', upload.single('avatar'), async (req, res) => {
   }
 })
 
+router.post('/import', async (req, res) => {
+  try {
+    const { contacts } = req.body
+    if (!Array.isArray(contacts)) return res.status(400).json({ error: 'Invalid payload' })
+
+    const created: any[] = []
+    for (const c of contacts) {
+      // require name
+      if (!c.name) continue
+      const contact = await createContact({ name: c.name, email: c.email || null, phone: c.phone || null, company: c.company || null, type: c.type || 'default' })
+      created.push(contact)
+    }
+
+    res.status(201).json({ created, count: created.length })
+  } catch (error) {
+    console.error('Import failed', error)
+    res.status(500).json({ error: 'Failed to import contacts' })
+  }
+})
+
 router.delete('/:id', async (req, res) => {
   try {
     const id = req.params.id
