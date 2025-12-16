@@ -14,13 +14,13 @@ router.get('/', async (_req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { name, email } = req.body
+    const { name, email, password } = req.body
     
-    if (!name || !email) {
-      return res.status(400).json({ error: 'Name and email are required' })
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Name, email, and password are required' })
     }
 
-    const user = await createUser(name, email)
+    const user = await createUser(name, email, password)
     res.status(201).json(user)
   } catch (error) {
     res.status(500).json({ error: 'Failed to create user' })
