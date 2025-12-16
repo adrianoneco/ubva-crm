@@ -20,17 +20,21 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { kanbanUserId, date, timeSlot, isAvailable } = req.body
+    const { title, date_time, duration_minutes, customer_name, notes, status, phone, meet_link } = req.body
 
-    if (!date || !timeSlot) {
-      return res.status(400).json({ error: 'Date and time slot are required' })
+    if (!date_time) {
+      return res.status(400).json({ error: 'Date/time is required' })
     }
 
     const schedule = await createSchedule({
-      kanbanUserId,
-      date: new Date(date),
-      timeSlot,
-      isAvailable: isAvailable ?? true,
+      title,
+      date_time: new Date(date_time),
+      duration_minutes,
+      customer_name,
+      notes,
+      status,
+      phone,
+      meet_link,
     })
     res.status(201).json(schedule)
   } catch (error) {
@@ -41,14 +45,18 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
-    const { kanbanUserId, date, timeSlot, isAvailable } = req.body
+    const id = req.params.id
+    const { title, date_time, duration_minutes, customer_name, notes, status, phone, meet_link } = req.body
 
     const schedule = await updateSchedule(id, {
-      kanbanUserId,
-      date: date ? new Date(date) : undefined,
-      timeSlot,
-      isAvailable,
+      title,
+      date_time: date_time ? new Date(date_time) : undefined,
+      duration_minutes,
+      customer_name,
+      notes,
+      status,
+      phone,
+      meet_link,
     })
     res.json(schedule)
   } catch (error) {
@@ -59,7 +67,7 @@ router.put('/:id', async (req, res) => {
 
 router.post('/:id/toggle', async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = req.params.id
     const schedule = await toggleScheduleAvailability(id)
     res.json(schedule)
   } catch (error) {
@@ -70,7 +78,7 @@ router.post('/:id/toggle', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = req.params.id
     await deleteSchedule(id)
     res.status(204).send()
   } catch (error) {

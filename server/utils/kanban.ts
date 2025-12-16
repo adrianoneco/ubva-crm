@@ -14,8 +14,9 @@ export async function createKanbanUser(data: {
   role?: string
   kanbanStep?: number
 }) {
+  const { randomUUID } = await import('crypto')
   const [user] = await db.insert(webglassBot).values({
-    id: data.id || undefined,
+    id: randomUUID(),
     name: data.name,
     avatar: data.avatar || null,
     phone: data.phone || null,

@@ -53,9 +53,9 @@ export async function createContact(data: ContactData) {
   const contact: ContactData = {
     id,
     name: data.name,
-    email: data.email || null,
-    phone: data.phone || null,
-    company: data.company || null,
+    email: data.email || undefined,
+    phone: data.phone || undefined,
+    company: data.company || undefined,
     type,
     avatar: null,
     createdAt: now,

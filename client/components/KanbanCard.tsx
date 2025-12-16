@@ -1,10 +1,9 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { KanbanUser } from './KanbanBoard'
 
 interface KanbanCardProps {
   user: any
-  onDelete: (id: number) => void
+  onDelete: (id: string) => void
   isDragging?: boolean
 }
 

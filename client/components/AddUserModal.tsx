@@ -18,11 +18,11 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
     e.preventDefault()
     onAdd({
       name,
-      email: email || null,
-      phone: phone || null,
-      role: role || null,
-      avatar: avatar || null,
-      kanbanStep: stepIndex,
+      email: email || undefined,
+      phone: phone || undefined,
+      role: role || undefined,
+      avatar: avatar || undefined,
+      kanban_step: stepIndex,
     })
   }
 

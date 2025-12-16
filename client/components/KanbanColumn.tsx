@@ -1,6 +1,5 @@
 import { useDroppable } from '@dnd-kit/core'
 import KanbanCard from './KanbanCard'
-import { KanbanUser } from './KanbanBoard'
 
 interface KanbanColumnProps {
   id: string

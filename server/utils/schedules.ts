@@ -1,6 +1,7 @@
 import { db } from '../db'
 import { appointments } from '../db/schema'
 import { eq, and, gte, lte } from 'drizzle-orm'
+import { randomUUID } from 'crypto'
 
 export async function getSchedules(startDate?: Date, endDate?: Date) {
   if (startDate && endDate) {
@@ -28,6 +29,7 @@ export async function createSchedule(data: {
   meet_link?: string
 }) {
   const [schedule] = await db.insert(appointments).values({
+    id: randomUUID(),
     title: data.title || null,
     date_time: data.date_time,
     duration_minutes: data.duration_minutes || 30,
