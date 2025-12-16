@@ -13,10 +13,19 @@ interface Contact {
   avatar?: string | null
 }
 
+interface BroadcastList {
+  id: string
+  name: string
+  description?: string
+  contacts: string[]
+  createdAt?: string
+}
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([])
   const [filterType, setFilterType] = useState<string>('all')
+  const [broadcastLists, setBroadcastLists] = useState<BroadcastList[]>([])
+  const [selectedListId, setSelectedListId] = useState<string | null>(null)
 
   // Import modal state
   const [importOpen, setImportOpen] = useState(false)
@@ -27,6 +36,13 @@ export default function ContactsPage() {
   // UI helpers
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<'name'|'recent'>('name')
+  const [showNewListModal, setShowNewListModal] = useState(false)
+  const [newListName, setNewListName] = useState('')
+  const [newListDesc, setNewListDesc] = useState('')
+
+  // Automatic lists on import
+  const [autoCreateLists, setAutoCreateLists] = useState(false)
+  const [autoListBaseName, setAutoListBaseName] = useState('Imported')
 
   // Modal for add/edit contact
   const [showModal, setShowModal] = useState(false)
@@ -35,12 +51,57 @@ export default function ContactsPage() {
 
   useEffect(() => {
     fetchContacts()
+    fetchBroadcastLists()
   }, [])
 
   const fetchContacts = async () => {
     const res = await fetch('/api/contacts')
     const data = await res.json()
     setContacts(data)
+    return data
+  }
+
+  const fetchBroadcastLists = async () => {
+    try {
+      const res = await fetch('/api/broadcast-lists')
+      if (res.ok) {
+        const data = await res.json()
+        setBroadcastLists(data)
+      }
+    } catch (e) {
+      setBroadcastLists([])
+    }
+  }
+
+  const createBroadcastList = async () => {
+    if (!newListName.trim()) return
+    const newList: BroadcastList = {
+      id: Date.now().toString(),
+      name: newListName,
+      description: newListDesc,
+      contacts: [],
+      createdAt: new Date().toISOString()
+    }
+    setBroadcastLists([...broadcastLists, newList])
+    setNewListName('')
+    setNewListDesc('')
+    setShowNewListModal(false)
+  }
+
+  const createBroadcastListWithContacts = (name: string, desc: string | undefined, contactsIds: string[]) => {
+    const newList: BroadcastList = {
+      id: Date.now().toString() + Math.random().toString(36).slice(2,6),
+      name,
+      description: desc,
+      contacts: contactsIds,
+      createdAt: new Date().toISOString()
+    }
+    setBroadcastLists(prev => [...prev, newList])
+  }
+
+  const deleteBroadcastList = (id: string) => {
+    setBroadcastLists(broadcastLists.filter(l => l.id !== id))
+    if (selectedListId === id) setSelectedListId(null)
   }
 
   const openNewModal = () => { setModalContact(null); setModalAvatarFile(null); setShowModal(true) }
@@ -108,7 +169,61 @@ export default function ContactsPage() {
 
   return (
     <MainLayout>
-      <div className="space-y-8">
+      <div className="flex gap-6">
+        {/* Sidebar - Broadcast Lists */}
+        <div className="w-64 flex-shrink-0">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 border border-gray-200 dark:border-gray-700 sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto">
+            <button 
+              onClick={() => setShowNewListModal(true)}
+              className="w-full px-4 py-2.5 rounded-lg bg-gradient-to-r from-primary-500 to-primary-600 text-white hover:from-primary-600 hover:to-primary-700 transition-all font-medium shadow-lg shadow-primary-500/30 flex items-center justify-center gap-2 mb-6"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Nova Lista
+            </button>
+
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 uppercase tracking-wider">Listas de Transmissão</h3>
+            <div className="space-y-2">
+              {broadcastLists.length === 0 ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400 text-center py-4">Nenhuma lista criada</p>
+              ) : (
+                broadcastLists.map(list => (
+                  <div 
+                    key={list.id}
+                    onClick={() => setSelectedListId(list.id)}
+                    className={`p-3 rounded-lg cursor-pointer transition-all ${
+                      selectedListId === list.id
+                        ? 'bg-primary-100 dark:bg-primary-900/30 border border-primary-300 dark:border-primary-600'
+                        : 'bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-white truncate">{list.name}</h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{list.contacts.length} contatos</p>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          deleteBroadcastList(list.id)
+                        }}
+                        className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors flex-shrink-0"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -380,6 +495,20 @@ export default function ContactsPage() {
                           {parsedRows.length} registros encontrados
                         </p>
                       </div>
+
+                      {/* Auto-create lists option */}
+                      <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+                        <label className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+                          <input type="checkbox" className="w-4 h-4 rounded border-gray-300 dark:border-gray-600" checked={autoCreateLists} onChange={e => setAutoCreateLists(e.target.checked)} />
+                          <span>Criar listas de transmissão automaticamente (máx. 256 por lista)</span>
+                        </label>
+
+                        {autoCreateLists && (
+                          <div className="w-full md:w-auto flex items-center gap-2">
+                            <input value={autoListBaseName} onChange={e => setAutoListBaseName(e.target.value)} placeholder="Nome base das listas" className="w-full md:w-72 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm" />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -405,12 +534,49 @@ export default function ContactsPage() {
 
                         const res = await fetch('/api/contacts/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contacts: contactsToImport }) })
                         if (res.ok) {
-                          fetchContacts()
+                          // refresh contacts and optionally create broadcast lists (256 per list)
+                          const newContacts = await fetchContacts()
+
+                          let listsCreated = 0
+                          if (autoCreateLists) {
+                            const matchedIds: string[] = []
+
+                            contactsToImport.forEach(ci => {
+                              let found = null
+                              if (ci.email) {
+                                found = newContacts.find((nc: any) => nc.email && (nc.email || '').toString().trim().toLowerCase() === (ci.email || '').toString().trim().toLowerCase())
+                              }
+                              if (!found && ci.phone) {
+                                found = newContacts.find((nc: any) => nc.phone && (nc.phone || '').toString().trim() === (ci.phone || '').toString().trim())
+                              }
+                              if (!found && ci.name) {
+                                found = newContacts.find((nc: any) => nc.name && (nc.name || '').toString().trim() === (ci.name || '').toString().trim())
+                              }
+                              if (found) matchedIds.push(found.id)
+                            })
+
+                            const uniqueIds = Array.from(new Set(matchedIds))
+                            if (uniqueIds.length > 0) {
+                              const chunkSize = 256
+                              for (let i = 0; i < uniqueIds.length; i += chunkSize) {
+                                const chunk = uniqueIds.slice(i, i + chunkSize)
+                                const listIndex = Math.floor(i / chunkSize) + 1
+                                const listName = `${autoListBaseName}${uniqueIds.length > chunkSize ? ` #${listIndex}` : ''}`
+                                createBroadcastListWithContacts(listName, `Importada em ${new Date().toLocaleString()}`, chunk)
+                                listsCreated++
+                              }
+                            }
+                          }
+
                           setImportOpen(false)
                           setParsedRows([])
                           setFileColumns([])
                           setMapping({ name: null, email: null, phone: null, company: null, type: null })
-                          alert(`✅ ${contactsToImport.length} contato(s) importado(s) com sucesso!`)
+                          if (listsCreated > 0) {
+                            alert(`✅ ${contactsToImport.length} contato(s) importado(s) com sucesso! ${listsCreated} lista(s) criada(s).`)
+                          } else {
+                            alert(`✅ ${contactsToImport.length} contato(s) importado(s) com sucesso!`)
+                          }
                         } else {
                           const err = await res.json()
                           alert('❌ Erro na importação: ' + (err.error || res.statusText))
@@ -471,7 +637,55 @@ export default function ContactsPage() {
               </div>
             </div>
           )}
+
+          {/* New Broadcast List modal */}
+          {showNewListModal && (
+            <div className="fixed inset-0 z-60 flex items-center justify-center p-6">
+              <div className="absolute inset-0 bg-black/50" onClick={() => setShowNewListModal(false)} />
+              <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-gray-200 dark:border-gray-700">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Nova Lista de Transmissão</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Nome *</label>
+                    <input 
+                      type="text"
+                      value={newListName}
+                      onChange={e => setNewListName(e.target.value)}
+                      placeholder="Ex: Clientes Premium"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Descrição (opcional)</label>
+                    <textarea 
+                      value={newListDesc}
+                      onChange={e => setNewListDesc(e.target.value)}
+                      placeholder="Descreva o propósito desta lista..."
+                      rows={3}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all text-sm"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button 
+                      onClick={() => setShowNewListModal(false)}
+                      className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium text-sm"
+                    >
+                      Cancelar
+                    </button>
+                    <button 
+                      onClick={createBroadcastList}
+                      className="px-5 py-2 rounded-lg bg-gradient-to-r from-primary-500 to-primary-600 text-white hover:from-primary-600 hover:to-primary-700 transition-all font-medium shadow-lg shadow-primary-500/30 text-sm"
+                    >
+                      Criar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+      </div>
     </MainLayout>
   )
 }
