@@ -10,7 +10,7 @@ interface Schedule {
   status: 'disponivel' | 'agendado'
 }
 
-export default function MeetingScheduler() {
+export default function MeetingScheduler({ selectedContact }: { selectedContact?: { id?: string, name?: string, phone?: string } } = {}) {
   const [timeSlots, setTimeSlots] = useState<string[]>([])
 
   useEffect(() => {
@@ -89,10 +89,12 @@ export default function MeetingScheduler() {
     // Toggle appointment by datetime (server will create if missing)
     try {
       const apiUrl = getApiUrl()
+      const payload: any = { date_time: scheduleDate.toISOString() }
+      if (selectedContact?.id) payload.contactId = selectedContact.id
       const response = await fetch(`${apiUrl}/api/agendamento/toggle-availability`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date_time: scheduleDate.toISOString() }),
+        body: JSON.stringify(payload),
       })
       const updated = await response.json()
 
@@ -224,9 +226,14 @@ export default function MeetingScheduler() {
       </div>
 
       <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
           Horários - {selectedDate.toLocaleDateString('pt-BR')}
         </h3>
+        {selectedContact && (
+          <div className="mb-4 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-sm text-emerald-700 dark:text-emerald-300">
+            Agendamentos para: <span className="font-semibold">{selectedContact.name || selectedContact.phone || selectedContact.id}</span>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center h-64">

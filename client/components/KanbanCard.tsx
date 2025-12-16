@@ -4,10 +4,11 @@ import { CSS } from '@dnd-kit/utilities'
 interface KanbanCardProps {
   user: any
   onDelete: (id: string) => void
+  onSelect?: (user: any) => void
   isDragging?: boolean
 }
 
-export default function KanbanCard({ user, onDelete, isDragging = false }: KanbanCardProps) {
+export default function KanbanCard({ user, onDelete, onSelect, isDragging = false }: KanbanCardProps) {
   const {
     attributes,
     listeners,
@@ -36,20 +37,23 @@ export default function KanbanCard({ user, onDelete, isDragging = false }: Kanba
       style={style}
       {...attributes}
       {...listeners}
-      className={`bg-white dark:bg-gray-700 rounded-xl p-4 shadow-lg hover:shadow-2xl transition-all cursor-move border-4 border-gray-400 dark:border-gray-500 hover:border-primary-500 dark:hover:border-primary-400 ${
-        isDragging ? 'opacity-50' : ''
+      onClick={() => onSelect && onSelect(user)}
+      role="button"
+      tabIndex={0}
+      className={`bg-white dark:bg-gray-700 rounded-xl p-4 shadow-sm hover:shadow-md transform hover:-translate-y-1 transition-all cursor-pointer border-l-4 border-primary-200 dark:border-primary-800 ${
+        isDragging ? 'opacity-60 scale-95' : ''
       }`}
     >
       <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
           {user.avatar ? (
             <img
               src={user.avatar}
               alt={user.customer_name || user.title || user.name}
-              className="w-8 h-8 rounded-lg object-cover ring-2 ring-primary-100"
+              className="w-10 h-10 rounded-lg object-cover ring-1 ring-primary-100"
             />
           ) : (
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-semibold text-sm shadow-lg shadow-primary-400/30">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
               {getInitials(user.customer_name || user.title || user.name || 'CT')}
             </div>
           )}
@@ -76,7 +80,7 @@ export default function KanbanCard({ user, onDelete, isDragging = false }: Kanba
         </button>
       </div>
 
-      <div className="space-y-2 text-xs text-secondary-600 mt-3 pt-3 border-t-2 border-gray-300 dark:border-gray-500">
+      <div className="space-y-2 text-xs text-secondary-600 mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
         {user.email && (
           <div className="flex items-center space-x-2">
             <svg className="w-3.5 h-3.5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

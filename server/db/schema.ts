@@ -46,3 +46,16 @@ export const contacts = pgTable('contacts', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
+
+export const broadcastLists = pgTable('broadcast_lists', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const broadcastListContacts = pgTable('broadcast_list_contacts', {
+  id: serial('id').primaryKey(),
+  listId: integer('list_id').notNull(),
+  contactId: integer('contact_id').notNull(),
+})

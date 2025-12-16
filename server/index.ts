@@ -11,6 +11,7 @@ import authRouter from './routes/auth'
 import kanbanRouter from './routes/kanban'
 import schedulesRouter from './routes/schedules'
 import appointmentsRouter from './routes/appointments'
+import broadcastsRouter from './routes/broadcasts'
 
 const app = express()
 const httpServer = createServer(app)
@@ -46,6 +47,7 @@ app.use('/api/auth', authRouter)
 app.use('/api/kanban', kanbanRouter)
 app.use('/api/schedules', schedulesRouter)
 app.use('/api/agendamento', appointmentsRouter)
+app.use('/api/broadcast-lists', broadcastsRouter)
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

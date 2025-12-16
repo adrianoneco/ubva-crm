@@ -39,12 +39,24 @@ const COLUMNS = [
   { id: 8, title: 'Confirmação' },
 ]
 
-export default function KanbanBoard() {
+export default function KanbanBoard({ onSelect }: { onSelect?: (user: KanbanUser) => void } = {}) {
   const [users, setUsers] = useState<KanbanUser[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const PALETTES = [
+    { header: 'text-amber-800 dark:text-amber-300', badge: 'from-amber-100 to-amber-50 text-amber-700 dark:from-amber-900/20 dark:to-amber-800/20 dark:text-amber-300' },
+    { header: 'text-emerald-800 dark:text-emerald-300', badge: 'from-emerald-100 to-emerald-50 text-emerald-700 dark:from-emerald-900/20 dark:to-emerald-800/20 dark:text-emerald-300' },
+    { header: 'text-teal-800 dark:text-teal-300', badge: 'from-teal-100 to-teal-50 text-teal-700 dark:from-teal-900/20 dark:to-teal-800/20 dark:text-teal-300' },
+    { header: 'text-indigo-800 dark:text-indigo-300', badge: 'from-indigo-100 to-indigo-50 text-indigo-700 dark:from-indigo-900/20 dark:to-indigo-800/20 dark:text-indigo-300' },
+    { header: 'text-purple-800 dark:text-purple-300', badge: 'from-purple-100 to-purple-50 text-purple-700 dark:from-purple-900/20 dark:to-purple-800/20 dark:text-purple-300' },
+    { header: 'text-pink-800 dark:text-pink-300', badge: 'from-pink-100 to-pink-50 text-pink-700 dark:from-pink-900/20 dark:to-pink-800/20 dark:text-pink-300' },
+    { header: 'text-rose-800 dark:text-rose-300', badge: 'from-rose-100 to-rose-50 text-rose-700 dark:from-rose-900/20 dark:to-rose-800/20 dark:text-rose-300' },
+    { header: 'text-orange-800 dark:text-orange-300', badge: 'from-orange-100 to-orange-50 text-orange-700 dark:from-orange-900/20 dark:to-orange-800/20 dark:text-orange-300' },
+    { header: 'text-cyan-800 dark:text-cyan-300', badge: 'from-cyan-100 to-cyan-50 text-cyan-700 dark:from-cyan-900/20 dark:to-cyan-800/20 dark:text-cyan-300' },
+  ]
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -188,20 +200,23 @@ export default function KanbanBoard() {
 
   return (
     <div className="p-3">
-      <div className="mb-4 flex justify-between items-center">
+      <div className="mb-4 flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Board de Vendas</h2>
           <p className="text-gray-600 dark:text-gray-400 text-xs">Gerencie o progresso dos seus contatos</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg hover:from-primary-600 hover:to-primary-700 transition-all font-medium shadow-lg shadow-primary-500/30 flex items-center gap-2 text-sm"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Adicionar Usuário
-        </button>
+
+        <div className="ml-auto">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg hover:from-primary-600 hover:to-primary-700 transition-all font-medium shadow-lg shadow-primary-500/30 flex items-center gap-2 text-sm"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Adicionar Usuário
+          </button>
+        </div>
       </div>
 
       {users.length === 0 ? (
@@ -228,23 +243,25 @@ export default function KanbanBoard() {
           onDragEnd={handleDragEnd}
         >
           <div className="relative">
-            {/* Scroll arrows */}
-            <button
-              aria-label="Scroll left"
-              onClick={() => {
-                const c = scrollRef.current
-                if (c) c.scrollBy({ left: -Math.round(c.clientWidth * 0.6), behavior: 'smooth' })
-              }}
-              className="hidden md:flex items-center justify-center absolute left-0 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-full p-2 shadow-md z-20 ml-2 hover:scale-105 transition-transform"
-            >
-              <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
+        <div className="p-4 bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 rounded-2xl shadow-inner">
+          {/* Scroll arrows */}
+          <button
+            aria-label="Scroll left"
+            onClick={() => {
+              const c = scrollRef.current
+              if (c) c.scrollBy({ left: -Math.round(c.clientWidth * 0.6), behavior: 'smooth' })
+            }}
+            className="hidden md:flex items-center justify-center absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-800/90 backdrop-blur rounded-full p-2 shadow-md z-20 hover:scale-105 transition-transform"
+          >
+            <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
 
-            <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-4 px-1 scroll-smooth">
-              {COLUMNS.map(column => {
+          <div ref={scrollRef} className="flex gap-6 overflow-x-auto pb-6 px-4 scroll-smooth">
+            {COLUMNS.map((column) => {
                 const columnUsers = users.filter(u => u.kanban_step === column.id)
+                const palette = PALETTES[column.id % PALETTES.length]
                 return (
                   <SortableContext
                     key={column.id}
@@ -256,25 +273,28 @@ export default function KanbanBoard() {
                       title={column.title}
                       users={columnUsers}
                       onDeleteUser={handleDeleteUser}
+                      colorPalette={palette}
+                      onSelect={onSelect}
                     />
                   </SortableContext>
                 )
-              })}
-            </div>
-
-            <button
-              aria-label="Scroll right"
-              onClick={() => {
-                const c = scrollRef.current
-                if (c) c.scrollBy({ left: Math.round(c.clientWidth * 0.6), behavior: 'smooth' })
-              }}
-              className="hidden md:flex items-center justify-center absolute right-0 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-full p-2 shadow-md z-20 mr-2 hover:scale-105 transition-transform"
-            >
-              <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
+            })}
           </div>
+
+          <button
+            aria-label="Scroll right"
+            onClick={() => {
+              const c = scrollRef.current
+              if (c) c.scrollBy({ left: Math.round(c.clientWidth * 0.6), behavior: 'smooth' })
+            }}
+            className="hidden md:flex items-center justify-center absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-800/90 backdrop-blur rounded-full p-2 shadow-md z-20 hover:scale-105 transition-transform"
+          >
+            <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
 
           <DragOverlay>
             {activeUser && (

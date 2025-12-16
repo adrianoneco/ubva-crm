@@ -59,7 +59,7 @@ router.post('/:id/avatar', upload.single('avatar'), async (req: Request, res) =>
 
 router.post('/import', async (req, res) => {
   try {
-    const { contacts } = req.body
+    const { contacts, createLists, listBaseName } = req.body
     if (!Array.isArray(contacts)) return res.status(400).json({ error: 'Invalid payload' })
 
     const created: any[] = []
@@ -70,7 +70,25 @@ router.post('/import', async (req, res) => {
       created.push(contact)
     }
 
-    res.status(201).json({ created, count: created.length })
+    // Optionally create broadcast lists server-side
+    const listsCreated: any[] = []
+    if (createLists) {
+      // match created contacts' ids
+      const contactIds = created.map(c => c.id)
+      // split into chunks of 256
+      const chunkSize = 256
+      for (let i = 0; i < contactIds.length; i += chunkSize) {
+        const chunk = contactIds.slice(i, i + chunkSize)
+        const index = Math.floor(i / chunkSize) + 1
+        const name = (contactIds.length > chunkSize) ? `${listBaseName} #${index}` : listBaseName
+        // create via broadcasts util
+        const { createBroadcastList } = await import('../utils/broadcasts')
+        const list = await createBroadcastList(name, `Importada em ${new Date().toLocaleString()}`, chunk)
+        listsCreated.push(list)
+      }
+    }
+
+    res.status(201).json({ created, count: created.length, listsCreated })
   } catch (error) {
     console.error('Import failed', error)
     res.status(500).json({ error: 'Failed to import contacts' })
