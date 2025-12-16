@@ -43,6 +43,7 @@ export default function KanbanBoard() {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -60,6 +61,8 @@ export default function KanbanBoard() {
 
   const fetchUsers = async () => {
     try {
+      setLoading(true)
+      setError(null)
       const response = await fetch('http://localhost:3001/api/kanban')
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`)
@@ -68,6 +71,7 @@ export default function KanbanBoard() {
       setUsers(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Failed to fetch kanban users:', error)
+      setError(error instanceof Error ? error.message : 'Erro ao carregar dados')
       setUsers([])
     } finally {
       setLoading(false)
@@ -144,21 +148,34 @@ export default function KanbanBoard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-400 rounded-full animate-spin"></div>
-          <span className="text-secondary-500">Carregando...</span>
+      <div className="flex items-center justify-center p-12 min-h-96">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-200 dark:border-blue-900 border-t-blue-500 rounded-full animate-spin"></div>
+          <p className="text-gray-600 dark:text-gray-400 font-medium">Carregando usuários...</p>
         </div>
       </div>
     )
   }
 
-  if (loading) {
+  if (error) {
     return (
-      <div className="flex items-center justify-center p-12 min-h-96">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-blue-200 dark:border-blue-900 border-t-blue-500 rounded-full animate-spin"></div>
-          <p className="text-gray-600 dark:text-gray-400 font-medium">Carregando usuários...</p>
+      <div className="p-6">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
+          <div className="flex items-start gap-4">
+            <svg className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4v2m0 4v2M12 3a9 9 0 110 18 9 9 0 010-18z" />
+            </svg>
+            <div>
+              <h3 className="font-semibold text-red-800 dark:text-red-200">Erro ao carregar dados</h3>
+              <p className="text-red-700 dark:text-red-300 text-sm mt-1">{error}</p>
+              <button
+                onClick={fetchUsers}
+                className="mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium"
+              >
+                Tentar Novamente
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     )
