@@ -61,10 +61,14 @@ export default function KanbanBoard() {
   const fetchUsers = async () => {
     try {
       const response = await fetch('http://localhost:3001/api/kanban')
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`)
+      }
       const data = await response.json()
-      setUsers(data)
+      setUsers(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Failed to fetch kanban users:', error)
+      setUsers([])
     } finally {
       setLoading(false)
     }
@@ -149,11 +153,22 @@ export default function KanbanBoard() {
     )
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12 min-h-96">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-200 dark:border-blue-900 border-t-blue-500 rounded-full animate-spin"></div>
+          <p className="text-gray-600 dark:text-gray-400 font-medium">Carregando usuários...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div>
+    <div className="p-6">
       <div className="mb-6 flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">WebGlass</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Board de Vendas</h2>
           <p className="text-gray-600 dark:text-gray-400 text-sm">Gerencie o progresso dos seus contatos</p>
         </div>
         <button
@@ -166,6 +181,88 @@ export default function KanbanBoard() {
           Adicionar Usuário
         </button>
       </div>
+
+      {users.length === 0 ? (
+        <div className="text-center py-12">
+          <svg className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+          </svg>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Nenhum usuário adicionado</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">Comece adicionando um novo usuário ao quadro</p>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-5 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all font-medium inline-flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Adicionar Primeiro Usuário
+          </button>
+        </div>
+      ) : (
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="relative">
+            {/* Scroll arrows */}
+            <button
+              aria-label="Scroll left"
+              onClick={() => {
+                const c = scrollRef.current
+                if (c) c.scrollBy({ left: -Math.round(c.clientWidth * 0.6), behavior: 'smooth' })
+              }}
+              className="hidden md:flex items-center justify-center absolute left-0 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-full p-2 shadow-md z-20 ml-2 hover:scale-105 transition-transform"
+            >
+              <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+
+            <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-4 px-2 scroll-smooth">
+              {COLUMNS.map(column => {
+                const columnUsers = users.filter(u => u.kanban_step === column.id)
+                return (
+                  <SortableContext
+                    key={column.id}
+                    items={columnUsers.map(u => u.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <KanbanColumn
+                      id={column.id.toString()}
+                      title={column.title}
+                      users={columnUsers}
+                      onDeleteUser={handleDeleteUser}
+                    />
+                  </SortableContext>
+                )
+              })}
+            </div>
+
+            <button
+              aria-label="Scroll right"
+              onClick={() => {
+                const c = scrollRef.current
+                if (c) c.scrollBy({ left: Math.round(c.clientWidth * 0.6), behavior: 'smooth' })
+              }}
+              className="hidden md:flex items-center justify-center absolute right-0 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-full p-2 shadow-md z-20 mr-2 hover:scale-105 transition-transform"
+            >
+              <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+
+          <DragOverlay>
+            {activeUser && (
+              <div className="opacity-50">
+                <KanbanCard user={activeUser} onDelete={() => {}} isDragging />
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
+      )}
 
       <DndContext
         sensors={sensors}
@@ -180,55 +277,6 @@ export default function KanbanBoard() {
               const c = scrollRef.current
               if (c) c.scrollBy({ left: -Math.round(c.clientWidth * 0.6), behavior: 'smooth' })
             }}
-            className="hidden md:flex items-center justify-center absolute left-0 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-full p-2 shadow-md z-20 ml-2 hover:scale-105 transition-transform"
-          >
-            <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-
-          <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-4 px-2 scroll-smooth">
-            {COLUMNS.map(column => {
-              const columnUsers = users.filter(u => u.kanban_step === column.id)
-              return (
-                <SortableContext
-                  key={column.id}
-                  items={columnUsers.map(u => u.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <KanbanColumn
-                    id={column.id.toString()}
-                    title={column.title}
-                    users={columnUsers}
-                    onDeleteUser={handleDeleteUser}
-                  />
-                </SortableContext>
-              )
-            })}
-          </div>
-
-          <button
-            aria-label="Scroll right"
-            onClick={() => {
-              const c = scrollRef.current
-              if (c) c.scrollBy({ left: Math.round(c.clientWidth * 0.6), behavior: 'smooth' })
-            }}
-            className="hidden md:flex items-center justify-center absolute right-0 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-full p-2 shadow-md z-20 mr-2 hover:scale-105 transition-transform"
-          >
-            <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-
-        <DragOverlay>
-          {activeUser && (
-            <div className="opacity-50">
-              <KanbanCard user={activeUser} onDelete={() => {}} isDragging />
-            </div>
-          )}
-        </DragOverlay>
-      </DndContext>
 
       {showAddModal && (
         <AddUserModal

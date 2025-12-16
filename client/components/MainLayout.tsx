@@ -121,13 +121,6 @@ export default function MainLayout({ children }: { children: ReactNode }) {
               </svg>
               <span className="font-medium">Contatos</span>
             </button>
-
-            <button onClick={() => navigate('/agendamento')} className={navItemClass('/agendamento')}>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span className="font-medium">Agendamento</span>
-            </button>
           </nav>
 
         </aside>
@@ -140,8 +133,8 @@ export default function MainLayout({ children }: { children: ReactNode }) {
                 <button onClick={() => navigate('/webglass')} className={`py-4 px-6 font-medium text-sm transition-all rounded-t-xl relative ${location.pathname === '/webglass' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
                   <span className="flex items-center gap-2">WebGlass</span>
                 </button>
-                <button onClick={() => navigate('/agendamento')} className={`py-4 px-6 font-medium text-sm transition-all rounded-t-xl relative ${location.pathname === '/agendamento' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
-                  <span className="flex items-center gap-2">Agendamento</span>
+                <button onClick={() => navigate('/contacts')} className={`py-4 px-6 font-medium text-sm transition-all rounded-t-xl relative ${location.pathname === '/contacts' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                  <span className="flex items-center gap-2">Contatos</span>
                 </button>
               </div>
             </div>
