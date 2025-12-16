@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import MainLayout from '../components/MainLayout'
+import Papa from 'papaparse'
+import * as XLSX from 'xlsx'
 
 interface Contact {
   id: string
@@ -11,8 +13,6 @@ interface Contact {
   avatar?: string | null
 }
 
-import Papa from 'papaparse'
-import * as XLSX from 'xlsx'
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([])
