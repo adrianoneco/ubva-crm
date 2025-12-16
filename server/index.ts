@@ -6,6 +6,9 @@ import cors from 'cors'
 // Import routes
 import usersRouter from './routes/users'
 import contactsRouter from './routes/contacts'
+import authRouter from './routes/auth'
+import kanbanRouter from './routes/kanban'
+import schedulesRouter from './routes/schedules'
 
 const app = express()
 const httpServer = createServer(app)
@@ -30,6 +33,9 @@ app.get('/health', (_req, res) => {
 // API Routes
 app.use('/api/users', usersRouter)
 app.use('/api/contacts', contactsRouter)
+app.use('/api/auth', authRouter)
+app.use('/api/kanban', kanbanRouter)
+app.use('/api/schedules', schedulesRouter)
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
