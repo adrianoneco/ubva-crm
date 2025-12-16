@@ -1,5 +1,6 @@
 import { defineConfig } from 'drizzle-kit'
 
+// Development defaults - override with environment variables in production
 export default defineConfig({
   schema: './server/db/schema.ts',
   out: './migrations',

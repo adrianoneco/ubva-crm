@@ -4,6 +4,7 @@ import * as schema from './schema'
 
 const { Pool } = pg
 
+// Development defaults - override with environment variables in production
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: Number(process.env.DB_PORT) || 5432,
