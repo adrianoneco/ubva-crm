@@ -78,7 +78,7 @@ export default function Settings() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fuso horário</label>
                   <input value={timezone} onChange={e => setTimezone(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700" />
-                  <small className="text-gray-500">Use um identificador IANA, ex: America/Sao_Paulo</small>
+                  <small className="text-gray-500 dark:text-gray-400">Use um identificador IANA, ex: America/Sao_Paulo</small>
                 </div>
 
                 <div>
@@ -126,7 +126,7 @@ export default function Settings() {
           )}
 
           <div className="mt-6 flex items-center justify-between">
-            <div className="text-sm text-green-600" aria-live="polite">{savedOk ? 'Configurações salvas' : ''}</div>
+            <div className="text-sm text-green-600 dark:text-green-400" aria-live="polite">{savedOk ? 'Configurações salvas' : ''}</div>
             <div className="flex gap-2">
               <button onClick={() => { setTheme('system'); applyTheme('system') }} className="px-3 py-2 rounded-lg">Reverter</button>
               <button onClick={save} className="px-4 py-2 rounded-lg bg-blue-600 text-white">Salvar</button>

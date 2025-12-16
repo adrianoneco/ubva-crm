@@ -264,20 +264,6 @@ export default function KanbanBoard() {
         </DndContext>
       )}
 
-      <DndContext
-        sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="relative">
-          {/* Scroll arrows */}
-          <button
-            aria-label="Scroll left"
-            onClick={() => {
-              const c = scrollRef.current
-              if (c) c.scrollBy({ left: -Math.round(c.clientWidth * 0.6), behavior: 'smooth' })
-            }}
-
       {showAddModal && (
         <AddUserModal
           onClose={() => setShowAddModal(false)}
