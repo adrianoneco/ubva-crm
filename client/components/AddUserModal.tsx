@@ -27,14 +27,17 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Adicionar Usuário</h2>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Adicionar Usuário</h2>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">Preencha os dados do novo usuário</p>
+            </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-secondary-400 hover:text-secondary-600 transition-colors p-2 hover:bg-secondary-100 rounded-xl"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -44,7 +47,7 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="name" className="block text-sm font-medium text-secondary-700 mb-2">
                 Nome *
               </label>
               <input
@@ -53,13 +56,13 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                className="w-full px-4 py-2.5 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-400 focus:border-transparent outline-none transition-all bg-secondary-50"
                 placeholder="Nome completo"
               />
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-secondary-700 mb-2">
                 Email
               </label>
               <input
@@ -67,13 +70,13 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                className="w-full px-4 py-2.5 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-400 focus:border-transparent outline-none transition-all bg-secondary-50"
                 placeholder="email@exemplo.com"
               />
             </div>
 
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="phone" className="block text-sm font-medium text-secondary-700 mb-2">
                 Telefone
               </label>
               <input
@@ -81,13 +84,13 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                className="w-full px-4 py-2.5 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-400 focus:border-transparent outline-none transition-all bg-secondary-50"
                 placeholder="(00) 00000-0000"
               />
             </div>
 
             <div>
-              <label htmlFor="cargo" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="cargo" className="block text-sm font-medium text-secondary-700 mb-2">
                 Cargo
               </label>
               <input
@@ -95,13 +98,13 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
                 type="text"
                 value={cargo}
                 onChange={(e) => setCargo(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                className="w-full px-4 py-2.5 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-400 focus:border-transparent outline-none transition-all bg-secondary-50"
                 placeholder="Ex: Gerente de Vendas"
               />
             </div>
 
             <div>
-              <label htmlFor="avatar" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="avatar" className="block text-sm font-medium text-secondary-700 mb-2">
                 Avatar URL
               </label>
               <input
@@ -109,20 +112,20 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
                 type="url"
                 value={avatar}
                 onChange={(e) => setAvatar(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                className="w-full px-4 py-2.5 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-400 focus:border-transparent outline-none transition-all bg-secondary-50"
                 placeholder="https://exemplo.com/avatar.jpg"
               />
             </div>
 
             <div>
-              <label htmlFor="stepIndex" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="stepIndex" className="block text-sm font-medium text-secondary-700 mb-2">
                 Coluna Inicial
               </label>
               <select
                 id="stepIndex"
                 value={stepIndex}
                 onChange={(e) => setStepIndex(parseInt(e.target.value))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                className="w-full px-4 py-2.5 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-400 focus:border-transparent outline-none transition-all bg-secondary-50"
               >
                 <option value={0}>Início</option>
                 <option value={1}>Cadastro</option>
@@ -139,13 +142,13 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all font-medium"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl hover:from-primary-600 hover:to-primary-700 transition-all font-medium shadow-lg shadow-primary-500/30"
               >
                 Adicionar
               </button>

@@ -136,7 +136,10 @@ export default function KanbanBoard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Carregando...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-400 rounded-full animate-spin"></div>
+          <span className="text-secondary-500">Carregando...</span>
+        </div>
       </div>
     )
   }
@@ -144,12 +147,18 @@ export default function KanbanBoard() {
   return (
     <div>
       <div className="mb-6 flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Kanban Board</h2>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Kanban Board</h2>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Gerencie o progresso dos seus contatos</p>
+        </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          className="px-5 py-2.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl hover:from-primary-600 hover:to-primary-700 transition-all font-medium shadow-lg shadow-primary-500/30 flex items-center gap-2"
         >
-          + Adicionar Usuário
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Adicionar Usuário
         </button>
       </div>
 
