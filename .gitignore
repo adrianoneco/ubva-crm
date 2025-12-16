@@ -38,3 +38,7 @@ lerna-debug.log*
 # Drizzle
 .drizzle
 migrations/.snapshot.json
+
+
+# Bun
+*.lock

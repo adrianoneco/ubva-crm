@@ -1,25 +1,20 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import KanbanBoard from '../components/KanbanBoard'
-import MeetingScheduler from '../components/MeetingScheduler'
+import { ReactNode, useEffect, useState } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 
-export default function WebGlass() {
-  const [activeTab, setActiveTab] = useState<'kanban' | 'scheduler'>('kanban')
+export default function MainLayout({ children }: { children: ReactNode }) {
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') === 'dark' || 
+      return localStorage.getItem('theme') === 'dark' ||
         (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)
     }
     return false
   })
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
+    if (darkMode) document.documentElement.classList.add('dark')
+    else document.documentElement.classList.remove('dark')
   }, [darkMode])
 
   const toggleDarkMode = () => {
@@ -28,16 +23,13 @@ export default function WebGlass() {
     localStorage.setItem('theme', newMode ? 'dark' : 'light')
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('user')
-    navigate('/login')
-  }
-
   const user = JSON.parse(localStorage.getItem('user') || '{}')
+
+  const navItemClass = (path: string) =>
+    `w-full text-left py-3 px-4 rounded-lg transition-all flex items-center gap-3 ${location.pathname === path ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
       <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -52,6 +44,7 @@ export default function WebGlass() {
                 <p className="text-xs text-gray-500 dark:text-gray-400">Bem-vindo, {user.name || 'Usuário'}</p>
               </div>
             </div>
+
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate('/settings')}
@@ -79,8 +72,9 @@ export default function WebGlass() {
                   </svg>
                 )}
               </button>
+
               <button
-                onClick={handleLogout}
+                onClick={() => { localStorage.removeItem('user'); navigate('/login') }}
                 className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,7 +88,6 @@ export default function WebGlass() {
       </header>
 
       <div className="flex">
-        {/* Sidebar - always visible */}
         <aside className="flex flex-col w-64 bg-white/90 dark:bg-gray-800/90 border-r border-gray-200 dark:border-gray-700 p-4 space-y-4 sticky top-16 h-[calc(100vh-4rem)]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg flex items-center justify-center shadow-md">
@@ -109,92 +102,47 @@ export default function WebGlass() {
           </div>
 
           <nav className="mt-4 flex flex-col gap-2">
-            <button
-              onClick={() => setActiveTab('kanban')}
-              className={`w-full text-left py-3 px-4 rounded-lg transition-all flex items-center gap-3 ${
-                activeTab === 'kanban'
-                  ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
+            <button onClick={() => navigate('/webglass')} className={navItemClass('/webglass')}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
               </svg>
               <span className="font-medium">Kanban Board</span>
             </button>
 
-            <button
-              onClick={() => navigate('/contacts')}
-              className={`w-full text-left py-3 px-4 rounded-lg transition-all flex items-center gap-3 ${
-                activeTab === 'scheduler'
-                  ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
+            <button onClick={() => navigate('/contacts')} className={navItemClass('/contacts')}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8h4l3 13h4l3-13h4" />
               </svg>
               <span className="font-medium">Contatos</span>
             </button>
 
-            <button
-              onClick={() => navigate('/agendamento')}
-              className={`w-full text-left py-3 px-4 rounded-lg transition-all flex items-center gap-3 ${
-                activeTab === 'scheduler'
-                  ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
+            <button onClick={() => navigate('/agendamento')} className={navItemClass('/agendamento')}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               <span className="font-medium">Agendamento</span>
             </button>
           </nav>
+
         </aside>
 
         <div className="flex-1">
-          {/* Mobile tabs (visible on small screens) */}
+          {/* Mobile top nav */}
           <div className="md:hidden bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex space-x-1">
-                <button
-                  onClick={() => setActiveTab('kanban')}
-                  className={`py-4 px-6 font-medium text-sm transition-all rounded-t-xl relative ${
-                    activeTab === 'kanban'
-                      ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-                    </svg>
-                    Kanban Board
-                  </span>
+                <button onClick={() => navigate('/webglass')} className={`py-4 px-6 font-medium text-sm transition-all rounded-t-xl relative ${location.pathname === '/webglass' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                  <span className="flex items-center gap-2">Kanban Board</span>
                 </button>
-                <button
-                  onClick={() => navigate('/agendamento')}
-                  className={`py-4 px-6 font-medium text-sm transition-all rounded-t-xl relative ${
-                    activeTab === 'scheduler'
-                      ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    Agendamento
-                  </span>
+                <button onClick={() => navigate('/agendamento')} className={`py-4 px-6 font-medium text-sm transition-all rounded-t-xl relative ${location.pathname === '/agendamento' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                  <span className="flex items-center gap-2">Agendamento</span>
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Content */}
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {activeTab === 'kanban' ? <KanbanBoard /> : <MeetingScheduler />}
+            {children}
           </main>
         </div>
       </div>

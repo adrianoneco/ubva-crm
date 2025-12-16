@@ -15,13 +15,13 @@ router.get('/', async (_req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { name, avatar, phone, email, cargo, stepIndex } = req.body
+    const { name, avatar, phone, email, role, kanbanStep } = req.body
 
     if (!name) {
       return res.status(400).json({ error: 'Name is required' })
     }
 
-    const user = await createKanbanUser({ name, avatar, phone, email, cargo, stepIndex })
+    const user = await createKanbanUser({ name, avatar, phone, email, role, kanbanStep })
     res.status(201).json(user)
   } catch (error) {
     console.error('Create kanban user error:', error)
@@ -31,10 +31,10 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
-    const { name, avatar, phone, email, cargo, stepIndex } = req.body
+    const id = req.params.id
+    const { name, avatar, phone, email, role, kanbanStep } = req.body
 
-    const user = await updateKanbanUser(id, { name, avatar, phone, email, cargo, stepIndex })
+    const user = await updateKanbanUser(id, { name, avatar, phone, email, role, kanbanStep })
     res.json(user)
   } catch (error) {
     console.error('Update kanban user error:', error)
@@ -44,7 +44,7 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = req.params.id
     await deleteKanbanUser(id)
     res.status(204).send()
   } catch (error) {

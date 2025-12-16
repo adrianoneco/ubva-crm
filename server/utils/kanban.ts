@@ -1,9 +1,9 @@
 import { db } from '../db'
-import { kanbanUsers } from '../db/schema'
+import { webglassKanban } from '../db/schema'
 import { eq } from 'drizzle-orm'
 
 export async function getKanbanUsers() {
-  return await db.select().from(kanbanUsers).orderBy(kanbanUsers.stepIndex)
+  return await db.select().from(webglassKanban).orderBy(webglassKanban.kanbanStep)
 }
 
 export async function createKanbanUser(data: {
@@ -11,41 +11,42 @@ export async function createKanbanUser(data: {
   avatar?: string
   phone?: string
   email?: string
-  cargo?: string
-  stepIndex?: number
+  role?: string
+  kanbanStep?: number
 }) {
-  const [user] = await db.insert(kanbanUsers).values({
+  const [user] = await db.insert(webglassKanban).values({
+    id: data.id || undefined,
     name: data.name,
     avatar: data.avatar || null,
     phone: data.phone || null,
     email: data.email || null,
-    cargo: data.cargo || null,
-    stepIndex: data.stepIndex || 0,
+    role: data.role || null,
+    kanbanStep: data.kanbanStep || 0,
   }).returning()
 
   return user
 }
 
 export async function updateKanbanUser(
-  id: number,
+  id: string,
   data: Partial<{
     name: string
     avatar: string
     phone: string
     email: string
-    cargo: string
-    stepIndex: number
+    role: string
+    kanbanStep: number
   }>
 ) {
   const [user] = await db
-    .update(kanbanUsers)
-    .set(data)
-    .where(eq(kanbanUsers.id, id))
+    .update(webglassKanban)
+    .set(data as any)
+    .where(eq(webglassKanban.id, id))
     .returning()
 
   return user
 }
 
-export async function deleteKanbanUser(id: number) {
-  await db.delete(kanbanUsers).where(eq(kanbanUsers.id, id))
+export async function deleteKanbanUser(id: string) {
+  await db.delete(webglassKanban).where(eq(webglassKanban.id, id))
 }
