@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { getApiUrl } from '../config'
 
 export default function Recover() {
   const [email, setEmail] = useState('')
@@ -18,7 +19,8 @@ export default function Recover() {
     setLoading(true)
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/recover', {
+      const apiUrl = getApiUrl()
+      const response = await fetch(`${apiUrl}/api/auth/recover`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -58,7 +60,8 @@ export default function Recover() {
     setLoading(true)
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/reset-password', {
+      const apiUrl = getApiUrl()
+      const response = await fetch(`${apiUrl}/api/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, newPassword }),

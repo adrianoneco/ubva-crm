@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getApiUrl } from '../config'
 
 interface Schedule {
   id: string
@@ -60,8 +61,9 @@ export default function MeetingScheduler() {
       const endDate = new Date(selectedDate)
       endDate.setHours(23, 59, 59, 999)
 
+      const apiUrl = getApiUrl()
       const response = await fetch(
-        `http://localhost:3001/api/agendamento?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
+        `${apiUrl}/api/agendamento?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
       )
       const data = await response.json()
       setSchedules(data)
@@ -86,7 +88,8 @@ export default function MeetingScheduler() {
 
     // Toggle appointment by datetime (server will create if missing)
     try {
-      const response = await fetch('http://localhost:3001/api/agendamento/toggle-availability', {
+      const apiUrl = getApiUrl()
+      const response = await fetch(`${apiUrl}/api/agendamento/toggle-availability`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date_time: scheduleDate.toISOString() }),

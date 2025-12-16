@@ -9,19 +9,6 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
-// Kanban users table (for WebGlass Tab 1)
-export const kanbanUsers = pgTable('kanban_users', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
-  avatar: varchar('avatar', { length: 500 }),
-  phone: varchar('phone', { length: 50 }),
-  email: varchar('email', { length: 255 }),
-  cargo: varchar('cargo', { length: 255 }),
-  stepIndex: integer('step_index').notNull().default(0),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
-
 // WebGlass bot table with UUID id
 export const webglassBot = pgTable('webglass_bot', {
   id: text('id').notNull().primaryKey(),

@@ -36,12 +36,12 @@ export default function KanbanCard({ user, onDelete, isDragging = false }: Kanba
       style={style}
       {...attributes}
       {...listeners}
-      className={`bg-white dark:bg-gray-700 rounded-xl p-3 shadow-sm hover:shadow-lg transition-all cursor-move border border-gray-200 dark:border-gray-600 hover:border-primary-400 dark:hover:border-primary-500 ${
+      className={`bg-white dark:bg-gray-700 rounded-xl p-4 shadow-lg hover:shadow-2xl transition-all cursor-move border-4 border-gray-400 dark:border-gray-500 hover:border-primary-500 dark:hover:border-primary-400 ${
         isDragging ? 'opacity-50' : ''
       }`}
     >
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center space-x-3">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center space-x-2">
           {user.avatar ? (
             <img
               src={user.avatar}
@@ -49,12 +49,12 @@ export default function KanbanCard({ user, onDelete, isDragging = false }: Kanba
               className="w-8 h-8 rounded-lg object-cover ring-2 ring-primary-100"
             />
           ) : (
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-semibold text-xs shadow-lg shadow-primary-400/30">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-semibold text-sm shadow-lg shadow-primary-400/30">
               {getInitials(user.customer_name || user.title || user.name || 'CT')}
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">{user.name}</h4>
+            <h4 className="font-semibold text-gray-900 dark:text-white text-sm truncate">{user.name}</h4>
             {user.role && (
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.role}</p>
             )}
@@ -76,7 +76,7 @@ export default function KanbanCard({ user, onDelete, isDragging = false }: Kanba
         </button>
       </div>
 
-      <div className="space-y-1 text-xs text-secondary-600">
+      <div className="space-y-2 text-xs text-secondary-600 mt-3 pt-3 border-t-2 border-gray-300 dark:border-gray-500">
         {user.email && (
           <div className="flex items-center space-x-2">
             <svg className="w-3.5 h-3.5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

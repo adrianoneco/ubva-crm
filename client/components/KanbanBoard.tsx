@@ -12,6 +12,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import KanbanColumn from './KanbanColumn'
 import KanbanCard from './KanbanCard'
 import AddUserModal from './AddUserModal'
+import { getApiUrl } from '../config'
 
 export interface KanbanUser {
   id: string
@@ -63,7 +64,8 @@ export default function KanbanBoard() {
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch('http://localhost:3001/api/kanban')
+      const apiUrl = getApiUrl()
+      const response = await fetch(`${apiUrl}/api/kanban`)
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`)
       }
@@ -103,7 +105,8 @@ export default function KanbanBoard() {
 
     // Update on server
     try {
-      await fetch(`http://localhost:3001/api/kanban/${userId}`, {
+      const apiUrl = getApiUrl()
+      await fetch(`${apiUrl}/api/kanban/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ kanbanStep: newStep }),
@@ -119,7 +122,8 @@ export default function KanbanBoard() {
   const handleAddUser = async (userData: any) => {
     // keep existing kanban user creation (optional) — this doesn't create appointments
     try {
-      const response = await fetch('http://localhost:3001/api/kanban', {
+      const apiUrl = getApiUrl()
+      const response = await fetch(`${apiUrl}/api/kanban`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData),
@@ -135,7 +139,8 @@ export default function KanbanBoard() {
 
   const handleDeleteUser = async (id: string) => {
     try {
-      await fetch(`http://localhost:3001/api/kanban/${id}`, {
+      const apiUrl = getApiUrl()
+      await fetch(`${apiUrl}/api/kanban/${id}`, {
         method: 'DELETE',
       })
       setUsers(users.filter(user => user.id !== id))
@@ -182,15 +187,15 @@ export default function KanbanBoard() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex justify-between items-center">
+    <div className="p-3">
+      <div className="mb-4 flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Board de Vendas</h2>
-          <p className="text-gray-600 dark:text-gray-400 text-sm">Gerencie o progresso dos seus contatos</p>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Board de Vendas</h2>
+          <p className="text-gray-600 dark:text-gray-400 text-xs">Gerencie o progresso dos seus contatos</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="px-5 py-2.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl hover:from-primary-600 hover:to-primary-700 transition-all font-medium shadow-lg shadow-primary-500/30 flex items-center gap-2"
+          className="px-4 py-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg hover:from-primary-600 hover:to-primary-700 transition-all font-medium shadow-lg shadow-primary-500/30 flex items-center gap-2 text-sm"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -237,7 +242,7 @@ export default function KanbanBoard() {
               </svg>
             </button>
 
-            <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-4 px-2 scroll-smooth">
+            <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-4 px-1 scroll-smooth">
               {COLUMNS.map(column => {
                 const columnUsers = users.filter(u => u.kanban_step === column.id)
                 return (

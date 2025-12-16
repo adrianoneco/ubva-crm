@@ -16,7 +16,7 @@ const app = express()
 const httpServer = createServer(app)
 const io = new Server(httpServer, {
   cors: {
-    origin: 'http://localhost:3000',
+    origin: ['http://localhost:3000', 'http://localhost:8000', 'http://135.148.144.92:8000'],
     methods: ['GET', 'POST'],
   },
 })
@@ -24,7 +24,12 @@ const io = new Server(httpServer, {
 const PORT = process.env.PORT || 3001
 
 // Middleware
-app.use(cors())
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:8000', 'http://135.148.144.92:8000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}))
 app.use(express.json())
 app.use('/data', express.static(path.join(process.cwd(), 'data')))
 
