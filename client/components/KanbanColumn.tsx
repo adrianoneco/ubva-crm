@@ -5,7 +5,7 @@ interface KanbanColumnProps {
   id: string
   title: string
   users: any[]
-  colorPalette?: { header: string; badge: string }
+  colorPalette?: { header: string; badge: string; colorClass?: string }
   onSelect?: (user: any) => void
 }
 
@@ -35,6 +35,7 @@ export default function KanbanColumn({ id, title, users, colorPalette, onSelect 
             key={user.id}
             user={user}
             onSelect={onSelect}
+            indicatorClass={colorPalette?.colorClass}
           />
         ))}
       </div>

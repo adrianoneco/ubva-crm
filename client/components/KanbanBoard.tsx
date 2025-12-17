@@ -47,15 +47,15 @@ export default function KanbanBoard({ onSelect }: { onSelect?: (user: KanbanUser
   const [error, setError] = useState<string | null>(null)
 
   const PALETTES = [
-    { header: 'text-amber-800 dark:text-amber-300', badge: 'from-amber-100 to-amber-50 text-amber-700 dark:from-amber-900/20 dark:to-amber-800/20 dark:text-amber-300' },
-    { header: 'text-emerald-800 dark:text-emerald-300', badge: 'from-emerald-100 to-emerald-50 text-emerald-700 dark:from-emerald-900/20 dark:to-emerald-800/20 dark:text-emerald-300' },
-    { header: 'text-teal-800 dark:text-teal-300', badge: 'from-teal-100 to-teal-50 text-teal-700 dark:from-teal-900/20 dark:to-teal-800/20 dark:text-teal-300' },
-    { header: 'text-indigo-800 dark:text-indigo-300', badge: 'from-indigo-100 to-indigo-50 text-indigo-700 dark:from-indigo-900/20 dark:to-indigo-800/20 dark:text-indigo-300' },
-    { header: 'text-purple-800 dark:text-purple-300', badge: 'from-purple-100 to-purple-50 text-purple-700 dark:from-purple-900/20 dark:to-purple-800/20 dark:text-purple-300' },
-    { header: 'text-pink-800 dark:text-pink-300', badge: 'from-pink-100 to-pink-50 text-pink-700 dark:from-pink-900/20 dark:to-pink-800/20 dark:text-pink-300' },
-    { header: 'text-rose-800 dark:text-rose-300', badge: 'from-rose-100 to-rose-50 text-rose-700 dark:from-rose-900/20 dark:to-rose-800/20 dark:text-rose-300' },
-    { header: 'text-orange-800 dark:text-orange-300', badge: 'from-orange-100 to-orange-50 text-orange-700 dark:from-orange-900/20 dark:to-orange-800/20 dark:text-orange-300' },
-    { header: 'text-cyan-800 dark:text-cyan-300', badge: 'from-cyan-100 to-cyan-50 text-cyan-700 dark:from-cyan-900/20 dark:to-cyan-800/20 dark:text-cyan-300' },
+    { header: 'text-amber-800 dark:text-amber-300', badge: 'from-amber-100 to-amber-50 text-amber-700 dark:from-amber-900/20 dark:to-amber-800/20 dark:text-amber-300', colorClass: 'bg-amber-400 dark:bg-amber-700' },
+    { header: 'text-emerald-800 dark:text-emerald-300', badge: 'from-emerald-100 to-emerald-50 text-emerald-700 dark:from-emerald-900/20 dark:to-emerald-800/20 dark:text-emerald-300', colorClass: 'bg-emerald-400 dark:bg-emerald-700' },
+    { header: 'text-teal-800 dark:text-teal-300', badge: 'from-teal-100 to-teal-50 text-teal-700 dark:from-teal-900/20 dark:to-teal-800/20 dark:text-teal-300', colorClass: 'bg-teal-400 dark:bg-teal-700' },
+    { header: 'text-indigo-800 dark:text-indigo-300', badge: 'from-indigo-100 to-indigo-50 text-indigo-700 dark:from-indigo-900/20 dark:to-indigo-800/20 dark:text-indigo-300', colorClass: 'bg-indigo-400 dark:bg-indigo-700' },
+    { header: 'text-purple-800 dark:text-purple-300', badge: 'from-purple-100 to-purple-50 text-purple-700 dark:from-purple-900/20 dark:to-purple-800/20 dark:text-purple-300', colorClass: 'bg-purple-400 dark:bg-purple-700' },
+    { header: 'text-pink-800 dark:text-pink-300', badge: 'from-pink-100 to-pink-50 text-pink-700 dark:from-pink-900/20 dark:to-pink-800/20 dark:text-pink-300', colorClass: 'bg-pink-400 dark:bg-pink-700' },
+    { header: 'text-rose-800 dark:text-rose-300', badge: 'from-rose-100 to-rose-50 text-rose-700 dark:from-rose-900/20 dark:to-rose-800/20 dark:text-rose-300', colorClass: 'bg-rose-400 dark:bg-rose-700' },
+    { header: 'text-orange-800 dark:text-orange-300', badge: 'from-orange-100 to-orange-50 text-orange-700 dark:from-orange-900/20 dark:to-orange-800/20 dark:text-orange-300', colorClass: 'bg-orange-400 dark:bg-orange-700' },
+    { header: 'text-cyan-800 dark:text-cyan-300', badge: 'from-cyan-100 to-cyan-50 text-cyan-700 dark:from-cyan-900/20 dark:to-cyan-800/20 dark:text-cyan-300', colorClass: 'bg-cyan-400 dark:bg-cyan-700' },
   ]
 
   const sensors = useSensors(

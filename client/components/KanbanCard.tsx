@@ -4,10 +4,11 @@ import { CSS } from '@dnd-kit/utilities'
 interface KanbanCardProps {
   user: any
   onSelect?: (user: any) => void
+  indicatorClass?: string
   isDragging?: boolean
 }
 
-export default function KanbanCard({ user, onSelect, isDragging = false }: KanbanCardProps) {
+export default function KanbanCard({ user, onSelect, indicatorClass, isDragging = false }: KanbanCardProps) {
   const {
     attributes,
     listeners,
@@ -30,6 +31,27 @@ export default function KanbanCard({ user, onSelect, isDragging = false }: Kanba
       .slice(0, 2)
   }
 
+  const formatPhone = (p: string) => {
+    if (!p) return ''
+    const digits = p.replace(/\D/g, '')
+    // Expect country code + area code + number. Try to handle 10 or 11 digit numbers
+    if (digits.length === 11) {
+      // CC(2)+AA(2)+NNNNNNNNN? We'll format as +CC (AA) NNNN-NNNN using last 8 digits
+      const cc = digits.slice(0, digits.length - 10)
+      const a = digits.slice(digits.length - 10, digits.length - 8)
+      const n1 = digits.slice(digits.length - 8, digits.length - 4)
+      const n2 = digits.slice(digits.length - 4)
+      return `+${cc} (${a}) ${n1}-${n2}`
+    }
+    if (digits.length === 10) {
+      const a = digits.slice(0, 2)
+      const n1 = digits.slice(2, 6)
+      const n2 = digits.slice(6)
+      return `+55 (${a}) ${n1}-${n2}`
+    }
+    return p
+  }
+
   return (
     <div
       ref={setNodeRef}
@@ -45,6 +67,9 @@ export default function KanbanCard({ user, onSelect, isDragging = false }: Kanba
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center space-x-3">
+          {/* Indicator dot */}
+          <div className={`w-3 h-3 rounded-full ${indicatorClass || 'bg-gray-300 dark:bg-gray-600'} mt-1`} />
+
           {user.avatar ? (
             <img
               src={user.avatar}
@@ -57,12 +82,12 @@ export default function KanbanCard({ user, onSelect, isDragging = false }: Kanba
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <h4 className="font-semibold text-gray-900 dark:text-white text-sm truncate">{user.name}</h4>
+            <h4 className="font-semibold text-gray-900 dark:text-white text-sm truncate capitalize">{user.name}</h4>
             {user.role && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.role}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate capitalize">{user.role}</p>
             )}
             {user.phone && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.phone}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{formatPhone(user.phone)}</p>
             )}
           </div>
         </div>
@@ -74,10 +99,9 @@ export default function KanbanCard({ user, onSelect, isDragging = false }: Kanba
             <svg className="w-3.5 h-3.5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
-            <span className="truncate">{user.email}</span>
+            <span className="truncate lowercase">{(user.email || '').toLowerCase()}</span>
           </div>
         )}
-
       </div>
     </div>
   )
