@@ -11,7 +11,7 @@ import {
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import KanbanColumn from './KanbanColumn'
 import KanbanCard from './KanbanCard'
-import AddUserModal from './AddUserModal'
+
 import { getApiUrl } from '../config'
 
 export interface KanbanUser {
@@ -42,20 +42,19 @@ const COLUMNS = [
 export default function KanbanBoard({ onSelect }: { onSelect?: (user: KanbanUser) => void } = {}) {
   const [users, setUsers] = useState<KanbanUser[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [showAddModal, setShowAddModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const PALETTES = [
-    { header: 'text-amber-800 dark:text-amber-300', badge: 'from-amber-100 to-amber-50 text-amber-700 dark:from-amber-900/20 dark:to-amber-800/20 dark:text-amber-300', colorClass: 'bg-amber-400 dark:bg-amber-700' },
-    { header: 'text-emerald-800 dark:text-emerald-300', badge: 'from-emerald-100 to-emerald-50 text-emerald-700 dark:from-emerald-900/20 dark:to-emerald-800/20 dark:text-emerald-300', colorClass: 'bg-emerald-400 dark:bg-emerald-700' },
-    { header: 'text-teal-800 dark:text-teal-300', badge: 'from-teal-100 to-teal-50 text-teal-700 dark:from-teal-900/20 dark:to-teal-800/20 dark:text-teal-300', colorClass: 'bg-teal-400 dark:bg-teal-700' },
-    { header: 'text-indigo-800 dark:text-indigo-300', badge: 'from-indigo-100 to-indigo-50 text-indigo-700 dark:from-indigo-900/20 dark:to-indigo-800/20 dark:text-indigo-300', colorClass: 'bg-indigo-400 dark:bg-indigo-700' },
-    { header: 'text-purple-800 dark:text-purple-300', badge: 'from-purple-100 to-purple-50 text-purple-700 dark:from-purple-900/20 dark:to-purple-800/20 dark:text-purple-300', colorClass: 'bg-purple-400 dark:bg-purple-700' },
-    { header: 'text-pink-800 dark:text-pink-300', badge: 'from-pink-100 to-pink-50 text-pink-700 dark:from-pink-900/20 dark:to-pink-800/20 dark:text-pink-300', colorClass: 'bg-pink-400 dark:bg-pink-700' },
-    { header: 'text-rose-800 dark:text-rose-300', badge: 'from-rose-100 to-rose-50 text-rose-700 dark:from-rose-900/20 dark:to-rose-800/20 dark:text-rose-300', colorClass: 'bg-rose-400 dark:bg-rose-700' },
-    { header: 'text-orange-800 dark:text-orange-300', badge: 'from-orange-100 to-orange-50 text-orange-700 dark:from-orange-900/20 dark:to-orange-800/20 dark:text-orange-300', colorClass: 'bg-orange-400 dark:bg-orange-700' },
-    { header: 'text-cyan-800 dark:text-cyan-300', badge: 'from-cyan-100 to-cyan-50 text-cyan-700 dark:from-cyan-900/20 dark:to-cyan-800/20 dark:text-cyan-300', colorClass: 'bg-cyan-400 dark:bg-cyan-700' },
+    { header: 'text-amber-800 dark:text-amber-300', badge: 'from-amber-100 to-amber-50 text-amber-700 dark:from-amber-900/20 dark:to-amber-800/20 dark:text-amber-300', colorClass: 'bg-amber-400 dark:bg-amber-700', borderClass: 'border-amber-400 dark:border-amber-700' },
+    { header: 'text-emerald-800 dark:text-emerald-300', badge: 'from-emerald-100 to-emerald-50 text-emerald-700 dark:from-emerald-900/20 dark:to-emerald-800/20 dark:text-emerald-300', colorClass: 'bg-emerald-400 dark:bg-emerald-700', borderClass: 'border-emerald-400 dark:border-emerald-700' },
+    { header: 'text-teal-800 dark:text-teal-300', badge: 'from-teal-100 to-teal-50 text-teal-700 dark:from-teal-900/20 dark:to-teal-800/20 dark:text-teal-300', colorClass: 'bg-teal-400 dark:bg-teal-700', borderClass: 'border-teal-400 dark:border-teal-700' },
+    { header: 'text-indigo-800 dark:text-indigo-300', badge: 'from-indigo-100 to-indigo-50 text-indigo-700 dark:from-indigo-900/20 dark:to-indigo-800/20 dark:text-indigo-300', colorClass: 'bg-indigo-400 dark:bg-indigo-700', borderClass: 'border-indigo-400 dark:border-indigo-700' },
+    { header: 'text-purple-800 dark:text-purple-300', badge: 'from-purple-100 to-purple-50 text-purple-700 dark:from-purple-900/20 dark:to-purple-800/20 dark:text-purple-300', colorClass: 'bg-purple-400 dark:bg-purple-700', borderClass: 'border-purple-400 dark:border-purple-700' },
+    { header: 'text-pink-800 dark:text-pink-300', badge: 'from-pink-100 to-pink-50 text-pink-700 dark:from-pink-900/20 dark:to-pink-800/20 dark:text-pink-300', colorClass: 'bg-pink-400 dark:bg-pink-700', borderClass: 'border-pink-400 dark:border-pink-700' },
+    { header: 'text-rose-800 dark:text-rose-300', badge: 'from-rose-100 to-rose-50 text-rose-700 dark:from-rose-900/20 dark:to-rose-800/20 dark:text-rose-300', colorClass: 'bg-rose-400 dark:bg-rose-700', borderClass: 'border-rose-400 dark:border-rose-700' },
+    { header: 'text-orange-800 dark:text-orange-300', badge: 'from-orange-100 to-orange-50 text-orange-700 dark:from-orange-900/20 dark:to-orange-800/20 dark:text-orange-300', colorClass: 'bg-orange-400 dark:bg-orange-700', borderClass: 'border-orange-400 dark:border-orange-700' },
+    { header: 'text-cyan-800 dark:text-cyan-300', badge: 'from-cyan-100 to-cyan-50 text-cyan-700 dark:from-cyan-900/20 dark:to-cyan-800/20 dark:text-cyan-300', colorClass: 'bg-cyan-400 dark:bg-cyan-700', borderClass: 'border-cyan-400 dark:border-cyan-700' },
   ]
 
   const sensors = useSensors(
@@ -133,24 +132,7 @@ export default function KanbanBoard({ onSelect }: { onSelect?: (user: KanbanUser
     setActiveId(null)
   }
 
-  const handleAddUser = async (userData: any) => {
-    // keep existing kanban user creation (optional) — this doesn't create appointments
-    try {
-      const apiUrl = getApiUrl()
-      const response = await fetch(`${apiUrl}/api/kanban`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData),
-      })
-      const newUser = await response.json()
-      // Normalize kanban step and add to list
-      const normalized = { ...newUser, kanban_step: Number(newUser.kanban_step ?? newUser.kanbanStep ?? 0) }
-      setUsers([...users, normalized])
-      setShowAddModal(false)
-    } catch (error) {
-      console.error('Failed to add user:', error)
-    }
-  }
+
 
 
   const activeUser = activeId ? users.find(u => u.id === activeId) : null
@@ -191,25 +173,8 @@ export default function KanbanBoard({ onSelect }: { onSelect?: (user: KanbanUser
   }
 
   return (
-    <div className="p-3">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Board de Vendas</h2>
-          <p className="text-gray-600 dark:text-gray-400 text-xs">Gerencie o progresso dos seus contatos</p>
-        </div>
-
-        <div className="ml-auto">
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg hover:from-primary-600 hover:to-primary-700 transition-all font-medium shadow-lg shadow-primary-500/30 flex items-center gap-2 text-sm"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Adicionar Usuário
-          </button>
-        </div>
-      </div>
+    <div className="p-3 h-[calc(100vh-5rem)] overflow-hidden">
+      {/* header removed — tabs live on page header, board should fill remaining space */}
 
       {users.length === 0 ? (
         <div className="text-center py-12">
@@ -217,16 +182,7 @@ export default function KanbanBoard({ onSelect }: { onSelect?: (user: KanbanUser
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
           </svg>
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Nenhum usuário adicionado</h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">Comece adicionando um novo usuário ao quadro</p>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="px-5 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all font-medium inline-flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Adicionar Primeiro Usuário
-          </button>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">Nenhum usuário disponível nesta coluna</p>
         </div>
       ) : (
         <DndContext
@@ -266,6 +222,7 @@ export default function KanbanBoard({ onSelect }: { onSelect?: (user: KanbanUser
                       users={columnUsers}
                       colorPalette={palette}
                       onSelect={onSelect}
+                      borderClass={palette.borderClass}
                     />
                   </SortableContext>
                 )
@@ -297,12 +254,7 @@ export default function KanbanBoard({ onSelect }: { onSelect?: (user: KanbanUser
         </DndContext>
       )}
 
-      {showAddModal && (
-        <AddUserModal
-          onClose={() => setShowAddModal(false)}
-          onAdd={handleAddUser}
-        />
-      )}
+
     </div>
   )
 }

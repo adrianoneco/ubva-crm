@@ -61,7 +61,7 @@ export default function KanbanCard({ user, onSelect, indicatorClass, isDragging 
       onClick={() => onSelect && onSelect(user)}
       role="button"
       tabIndex={0}
-      className={`bg-white dark:bg-gray-700 rounded-xl p-4 shadow-sm hover:shadow-md transform hover:-translate-y-1 transition-all cursor-pointer border-l-4 border-primary-200 dark:border-primary-800 ${
+      className={`bg-white dark:bg-gray-700 rounded-xl p-4 shadow-sm hover:shadow-md transform hover:-translate-y-1 transition-all cursor-pointer border-l-4 ${indicatorClass ? indicatorClass : 'border-primary-200 dark:border-primary-800'} ${
         isDragging ? 'opacity-60 scale-95' : ''
       }`}
     >
