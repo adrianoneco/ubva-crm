@@ -15,11 +15,12 @@ export async function createKanbanUser(data: {
   kanbanStep?: number
 }) {
   const { randomUUID } = await import('crypto')
+  const { v4: uuidv4 } = await import('uuid')
   const [user] = await db.insert(webglassBot).values({
     id: randomUUID(),
     name: data.name,
     avatar: data.avatar || null,
-    phone: data.phone || null,
+    phone: data.phone ?? `unknown-${uuidv4()}`,
     email: data.email || null,
     role: data.role || null,
     kanbanStep: data.kanbanStep || 0,

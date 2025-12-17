@@ -1,8 +1,9 @@
-import { pgTable, serial, varchar, timestamp, integer, text } from 'drizzle-orm/pg-core'
+import { pgTable, varchar, timestamp, integer, text } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
 
 // Authentication users table
 export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
+  id: text('id').notNull().default(sql`gen_random_uuid()`).primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   password: varchar('password', { length: 255 }).notNull(),
@@ -11,8 +12,8 @@ export const users = pgTable('users', {
 
 // WebGlass bot table with UUID id
 export const webglassBot = pgTable('webglass_bot', {
-  id: text('id').notNull().primaryKey(),
-  phone: text('phone'),
+  id: text('id').notNull().default(sql`gen_random_uuid()`).primaryKey(),
+  phone: text('phone').notNull().unique(),
   step: integer('step'),
   name: text('name'),
   email: text('email'),
@@ -38,7 +39,7 @@ export const appointments = pgTable('appointments', {
 })
 
 export const contacts = pgTable('contacts', {
-  id: serial('id').primaryKey(),
+  id: text('id').notNull().primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   email: varchar('email', { length: 255 }),
   phone: varchar('phone', { length: 50 }),
@@ -48,14 +49,14 @@ export const contacts = pgTable('contacts', {
 })
 
 export const broadcastLists = pgTable('broadcast_lists', {
-  id: serial('id').primaryKey(),
+  id: text('id').notNull().primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
 export const broadcastListContacts = pgTable('broadcast_list_contacts', {
-  id: serial('id').primaryKey(),
-  listId: integer('list_id').notNull(),
-  contactId: integer('contact_id').notNull(),
+  id: text('id').notNull().default(sql`gen_random_uuid()`).primaryKey(),
+  listId: text('list_id').notNull(),
+  contactId: text('contact_id').notNull(),
 })

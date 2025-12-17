@@ -5,12 +5,11 @@ interface KanbanColumnProps {
   id: string
   title: string
   users: any[]
-  onDeleteUser: (id: string) => void
   colorPalette?: { header: string; badge: string }
   onSelect?: (user: any) => void
 }
 
-export default function KanbanColumn({ id, title, users, onDeleteUser, colorPalette, onSelect }: KanbanColumnProps) {
+export default function KanbanColumn({ id, title, users, colorPalette, onSelect }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id })
 
   const headerClass = colorPalette ? colorPalette.header : 'text-gray-800 dark:text-gray-100'
@@ -35,7 +34,6 @@ export default function KanbanColumn({ id, title, users, onDeleteUser, colorPale
           <KanbanCard
             key={user.id}
             user={user}
-            onDelete={onDeleteUser}
             onSelect={onSelect}
           />
         ))}

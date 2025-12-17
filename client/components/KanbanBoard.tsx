@@ -82,7 +82,9 @@ export default function KanbanBoard({ onSelect }: { onSelect?: (user: KanbanUser
         throw new Error(`API error: ${response.status}`)
       }
       const data = await response.json()
-      setUsers(Array.isArray(data) ? data : [])
+      // Normalize kanban step property (support both snake_case from DB and camelCase from API)
+      const normalized = Array.isArray(data) ? data.map((u: any) => ({ ...u, kanban_step: Number(u.kanban_step ?? u.kanbanStep ?? 0) })) : []
+      setUsers(normalized)
     } catch (error) {
       console.error('Failed to fetch kanban users:', error)
       setError(error instanceof Error ? error.message : 'Erro ao carregar dados')
@@ -112,7 +114,7 @@ export default function KanbanBoard({ onSelect }: { onSelect?: (user: KanbanUser
       return
     }
 
-    // Update locally immediately for better UX
+    // Update locally immediately for better UX (normalize property)
     setUsers(users.map(u => u.id === userId ? { ...u, kanban_step: newStep } : u))
 
     // Update on server
@@ -141,25 +143,15 @@ export default function KanbanBoard({ onSelect }: { onSelect?: (user: KanbanUser
         body: JSON.stringify(userData),
       })
       const newUser = await response.json()
-      // optional: map to appointment if desired
-      setUsers([...users, newUser])
+      // Normalize kanban step and add to list
+      const normalized = { ...newUser, kanban_step: Number(newUser.kanban_step ?? newUser.kanbanStep ?? 0) }
+      setUsers([...users, normalized])
       setShowAddModal(false)
     } catch (error) {
       console.error('Failed to add user:', error)
     }
   }
 
-  const handleDeleteUser = async (id: string) => {
-    try {
-      const apiUrl = getApiUrl()
-      await fetch(`${apiUrl}/api/kanban/${id}`, {
-        method: 'DELETE',
-      })
-      setUsers(users.filter(user => user.id !== id))
-    } catch (error) {
-      console.error('Failed to delete kanban user:', error)
-    }
-  }
 
   const activeUser = activeId ? users.find(u => u.id === activeId) : null
 
@@ -272,7 +264,6 @@ export default function KanbanBoard({ onSelect }: { onSelect?: (user: KanbanUser
                       id={column.id.toString()}
                       title={column.title}
                       users={columnUsers}
-                      onDeleteUser={handleDeleteUser}
                       colorPalette={palette}
                       onSelect={onSelect}
                     />
@@ -299,7 +290,7 @@ export default function KanbanBoard({ onSelect }: { onSelect?: (user: KanbanUser
           <DragOverlay>
             {activeUser && (
               <div className="opacity-50">
-                <KanbanCard user={activeUser} onDelete={() => {}} isDragging />
+                <KanbanCard user={activeUser} isDragging />
               </div>
             )}
           </DragOverlay>
