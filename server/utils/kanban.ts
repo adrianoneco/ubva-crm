@@ -40,12 +40,14 @@ export async function updateKanbanUser(
     kanbanStep: number
   }>
 ) {
+  console.log('[Kanban Utils] Updating user', id, 'with data:', data)
   const [user] = await db
     .update(webglassBot)
     .set(data as any)
     .where(eq(webglassBot.id, id))
     .returning()
 
+  console.log('[Kanban Utils] Updated user result:', { id: user.id, kanbanStep: user.kanbanStep })
   return user
 }
 

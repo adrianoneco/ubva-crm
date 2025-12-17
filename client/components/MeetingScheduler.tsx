@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { io, Socket } from 'socket.io-client'
 import { getApiUrl } from '../config'
 
 interface Schedule {
@@ -48,9 +49,33 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [loading, setLoading] = useState(false)
   const [allowedDays, setAllowedDays] = useState<string[] | null>(null)
+  const [socket, setSocket] = useState<Socket | null>(null)
 
   useEffect(() => {
     fetchSchedules()
+
+    // Socket.io connection for real-time updates - connect to same origin
+    const socketUrl = `${window.location.protocol}//${window.location.host}`
+    console.log('[MeetingScheduler] Connecting to socket:', socketUrl)
+    const newSocket = io(socketUrl, { path: '/socket.io' })
+    setSocket(newSocket)
+
+    newSocket.on('connect', () => {
+      console.log('[MeetingScheduler] ✅ Socket connected:', newSocket.id)
+    })
+
+    newSocket.on('connect_error', (error) => {
+      console.error('[MeetingScheduler] ❌ Socket connection error:', error.message)
+    })
+
+    newSocket.on('schedule-update', () => {
+      console.log('[MeetingScheduler] 🔄 Schedule update received, refreshing...')
+      fetchSchedules()
+    })
+
+    return () => {
+      newSocket.disconnect()
+    }
   }, [selectedDate])
 
   const fetchSchedules = async () => {
@@ -107,6 +132,9 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
       } else {
         setSchedules([...schedules, updated])
       }
+      // Emit socket event to notify other clients
+      console.log('[MeetingScheduler] 📤 Emitting schedule-changed event')
+      socket?.emit('schedule-changed')
     } catch (error) {
       console.error('Failed to toggle appointment:', error)
     }

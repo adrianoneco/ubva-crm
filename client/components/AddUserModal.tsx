@@ -1,5 +1,14 @@
 import { useState } from 'react'
-import { KanbanUser } from './KanbanBoard'
+
+interface KanbanUser {
+  id: string
+  name: string
+  email?: string
+  phone?: string
+  role?: string
+  avatar?: string
+  kanban_step: number
+}
 
 interface AddUserModalProps {
   onClose: () => void
