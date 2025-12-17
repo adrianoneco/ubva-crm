@@ -6,11 +6,10 @@ interface KanbanColumnProps {
   title: string
   users: any[]
   colorPalette?: { header: string; badge: string; colorClass?: string }
-  borderClass?: string
   onSelect?: (user: any) => void
 }
 
-export default function KanbanColumn({ id, title, users, colorPalette, borderClass, onSelect }: KanbanColumnProps) {
+export default function KanbanColumn({ id, title, users, colorPalette, onSelect }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id })
 
   const headerClass = colorPalette ? colorPalette.header : 'text-gray-800 dark:text-gray-100'
@@ -19,7 +18,7 @@ export default function KanbanColumn({ id, title, users, colorPalette, borderCla
   return (
     <div
       ref={setNodeRef}
-      className={`flex-none w-64 md:w-72 bg-white dark:bg-gray-800 rounded-2xl p-4 min-h-[340px] max-h-[calc(100vh-8rem)] overflow-y-auto transition-all border ${
+      className={`flex-none w-64 md:w-72 bg-white dark:bg-gray-800 rounded-2xl p-4 min-h-[340px] transition-all border ${
         isOver ? 'shadow-lg border-opacity-60 ring-1 ring-primary-200/40' : 'border-gray-200 dark:border-gray-700 shadow-sm'
       }`}
     >
@@ -36,7 +35,7 @@ export default function KanbanColumn({ id, title, users, colorPalette, borderCla
             key={user.id}
             user={user}
             onSelect={onSelect}
-            indicatorClass={borderClass}
+            indicatorClass={colorPalette?.colorClass}
           />
         ))}
       </div>

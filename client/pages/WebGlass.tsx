@@ -12,24 +12,20 @@ export default function WebGlass() {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {/* Logo on the far left */}
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold text-lg">WG</div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">WebGlass</h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">Gerenciador de Vendas - Kanban Board</p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">WebGlass</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">Gerenciador de Vendas - Kanban Board</p>
           </div>
+        </div>
 
-          {/* Tabs moved to the right in the header */}
-          <div className="flex items-center gap-3">
-            <button onClick={() => setActiveTab('evolucao')} className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === 'evolucao' ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow' : 'text-gray-700 dark:text-gray-300 bg-transparent border border-gray-200 dark:border-gray-700'}`}>
-              Evolução
-            </button>
-            <button onClick={() => setActiveTab('agendamentos')} className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === 'agendamentos' ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow' : 'text-gray-700 dark:text-gray-300 bg-transparent border border-gray-200 dark:border-gray-700'}`}>
-              Agendamentos
-            </button>
-          </div>
+        {/* Tabs (outside the container) */}
+        <div className="flex items-center gap-3">
+          <button onClick={() => setActiveTab('evolucao')} className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === 'evolucao' ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow' : 'text-gray-700 dark:text-gray-300 bg-transparent border border-gray-200 dark:border-gray-700'}`}>
+            Evolução
+          </button>
+          <button onClick={() => setActiveTab('agendamentos')} className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === 'agendamentos' ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow' : 'text-gray-700 dark:text-gray-300 bg-transparent border border-gray-200 dark:border-gray-700'}`}>
+            Agendamentos
+          </button>
         </div>
 
         {/* Content with animated panes */}
