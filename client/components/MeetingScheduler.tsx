@@ -117,8 +117,10 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
     const hoursStr = String(hours).padStart(2, '0')
     const minutesStr = String(minutes || 0).padStart(2, '0')
     
-    // Formato ISO com offset de São Paulo: YYYY-MM-DDTHH:mm:ss-03:00
-    const dateTimeISO = `${year}-${month}-${day}T${hoursStr}:${minutesStr}:00-03:00`
+    // Construir objeto Date local e enviar em UTC ISO (evita problemas de offset)
+    const slotDate = new Date(selectedDate)
+    slotDate.setHours(hours, minutes || 0, 0, 0)
+    const dateTimeISO = slotDate.toISOString()
 
     // Prevent toggling when selected day is not allowed by settings
     if (allowedDays) {
@@ -166,14 +168,9 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
   const isSlotAvailable = (timeSlot: string) => {
     const [slotHours] = timeSlot.split(':').map(v => parseInt(v))
     const schedule = schedules.find(s => {
-      // Extrair diretamente da string ISO: YYYY-MM-DDTHH:mm:ss-03:00
-      const dateTimeStr = typeof s.date_time === 'string' ? s.date_time : new Date(s.date_time).toISOString()
-      const [datepart, timepart] = dateTimeStr.split('T')
-      const aptHours = parseInt(timepart.split(':')[0])
-      
-      const selectedDateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
-      const isSameDay = datepart === selectedDateStr
-      
+      const aptDate = new Date(typeof s.date_time === 'string' ? s.date_time : new Date(s.date_time).toISOString())
+      const isSameDay = aptDate.getFullYear() === selectedDate.getFullYear() && aptDate.getMonth() === selectedDate.getMonth() && aptDate.getDate() === selectedDate.getDate()
+      const aptHours = aptDate.getHours()
       return aptHours === slotHours && isSameDay
     })
     return schedule?.status === 'disponivel' || false
@@ -182,14 +179,9 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
   const isSlotBooked = (timeSlot: string) => {
     const [slotHours] = timeSlot.split(':').map(v => parseInt(v))
     const schedule = schedules.find(s => {
-      // Extrair diretamente da string ISO: YYYY-MM-DDTHH:mm:ss-03:00
-      const dateTimeStr = typeof s.date_time === 'string' ? s.date_time : new Date(s.date_time).toISOString()
-      const [datepart, timepart] = dateTimeStr.split('T')
-      const aptHours = parseInt(timepart.split(':')[0])
-      
-      const selectedDateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
-      const isSameDay = datepart === selectedDateStr
-      
+      const aptDate = new Date(typeof s.date_time === 'string' ? s.date_time : new Date(s.date_time).toISOString())
+      const isSameDay = aptDate.getFullYear() === selectedDate.getFullYear() && aptDate.getMonth() === selectedDate.getMonth() && aptDate.getDate() === selectedDate.getDate()
+      const aptHours = aptDate.getHours()
       return aptHours === slotHours && isSameDay
     })
     return !!(schedule && schedule.status === 'agendado')
