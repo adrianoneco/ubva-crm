@@ -17,6 +17,7 @@ export async function getKanbanUsers() {
       createdAt: webglassBot.createdAt,
       agendamentoId: webglassBot.agendamentoId,
       appointmentDateTime: appointments.date_time,
+      meet_link: appointments.meet_link,
     })
     .from(webglassBot)
     .leftJoin(appointments, eq(webglassBot.agendamentoId, appointments.id))

@@ -336,6 +336,20 @@ export default function WebGlass() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                   </svg>
                                   <span className="font-medium">{time}</span>
+                                  {user.meet_link && typeof user.meet_link === 'string' && user.meet_link.startsWith('https://meet.google.com/') && (
+                                    <a
+                                      href={user.meet_link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="ml-2 inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded"
+                                      title="Abrir reunião Google Meet"
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M21.8 7.6c-.2-.4-.5-.8-.9-1-1.7-1-6.2-1.6-9.9-1.6S2.9 5.6 1.2 6.6c-.4.2-.7.6-.9 1-.2.4-.1.9.1 1.3l2.2 3.7c.3.5.8.8 1.4.8h11.2c.6 0 1.1-.3 1.4-.8l2.2-3.7c.3-.4.3-.9.1-1.3zM5.4 9.8c-.7 0-1.3-.6-1.3-1.3S4.7 7.2 5.4 7.2 6.7 7.8 6.7 8.5 6.1 9.8 5.4 9.8z" />
+                                      </svg>
+                                      Meet
+                                    </a>
+                                  )}
                                 </div>
                               </div>
                             )
