@@ -23,23 +23,46 @@
 
 @layer utilities {
   /* Custom scrollbar */
+  /* Scrollbar variables for light/dark themes */
+  :root {
+    --scroll-track: #edf2f7; /* gray-200 */
+    --scroll-thumb: #3b82f6; /* blue-500 */
+    --scroll-thumb-hover: #2563eb; /* blue-600 */
+    --scroll-radius: 6px;
+    --scroll-size: 8px;
+  }
+
+  .dark :root,
+  :root.dark {
+    --scroll-track: #1f2937; /* gray-800 */
+    --scroll-thumb: #2563eb; /* blue-600 (slightly darker in dark mode) */
+    --scroll-thumb-hover: #1e40af; /* blue-800 */
+  }
+
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: var(--scroll-size);
+    height: var(--scroll-size);
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-gray-200 dark:bg-gray-800;
-    border-radius: 4px;
+    background: var(--scroll-track);
+    border-radius: var(--scroll-radius);
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-blue-500 dark:bg-blue-600;
-    border-radius: 4px;
+    background: var(--scroll-thumb);
+    border-radius: var(--scroll-radius);
+    transition: background-color 120ms ease;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-blue-600 dark:bg-blue-500;
+    background: var(--scroll-thumb-hover);
+  }
+
+  /* Firefox scrollbar support */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scroll-thumb) var(--scroll-track);
   }
 
   /* Hide scrollbar */
