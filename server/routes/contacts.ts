@@ -62,32 +62,76 @@ router.post('/import', async (req, res) => {
     const { contacts, createLists, listBaseName } = req.body
     if (!Array.isArray(contacts)) return res.status(400).json({ error: 'Invalid payload' })
 
-    const created: any[] = []
-    for (const c of contacts) {
-      // require name
-      if (!c.name) continue
-      const contact = await createContact({ name: c.name, email: c.email || null, phone: c.phone || null, company: c.company || null, type: c.type || 'default' })
-      created.push(contact)
-    }
+    console.log(`[Import] Recebidos ${contacts.length} contatos, createLists: ${createLists}`)
 
-    // Optionally create broadcast lists server-side
     const listsCreated: any[] = []
+    const created: any[] = []
+    let validContactIndex = 0
+
+    // Se criar listas, criar ANTES de importar os contatos
     if (createLists) {
-      // match created contacts' ids
-      const contactIds = created.map(c => c.id)
-      // split into chunks of 256
+      const validContacts = contacts.filter(c => c.name)
       const chunkSize = 256
-      for (let i = 0; i < contactIds.length; i += chunkSize) {
-        const chunk = contactIds.slice(i, i + chunkSize)
-        const index = Math.floor(i / chunkSize) + 1
-        const name = (contactIds.length > chunkSize) ? `${listBaseName} #${index}` : listBaseName
-        // create via broadcasts util
+      const numLists = Math.ceil(validContacts.length / chunkSize)
+      
+      console.log(`[Import] Criando ${numLists} lista(s) para ${validContacts.length} contatos válidos`)
+      
+      // Criar todas as listas primeiro
+      for (let i = 0; i < numLists; i++) {
+        const index = i + 1
+        const name = (numLists > 1) ? `${listBaseName} #${index}` : listBaseName
         const { createBroadcastList } = await import('../utils/broadcasts')
-        const list = await createBroadcastList(name, `Importada em ${new Date().toLocaleString()}`, chunk)
+        const list = await createBroadcastList(name, `Importada em ${new Date().toLocaleString()}`, [])
         listsCreated.push(list)
+        console.log(`[Import] Lista criada: ${list.name} (${list.id})`)
       }
     }
 
+    // Agora importar os contatos com broadcast_id já definido
+    for (const c of contacts) {
+      if (!c.name) {
+        console.log('[Import] Contato sem nome, ignorando')
+        continue
+      }
+      
+      console.log(`[Import] Processando contato:`, {
+        name: c.name,
+        email: c.email,
+        phone: c.phone,
+        company: c.company
+      })
+      
+      // Usar broadcastId do contato se foi enviado (frontend já calculou)
+      let broadcastId = c.broadcastId || null
+      
+      // Fallback: determinar qual lista este contato pertence (lógica antiga)
+      if (!broadcastId && createLists && listsCreated.length > 0) {
+        const listIndex = Math.floor(validContactIndex / 256)
+        broadcastId = listsCreated[listIndex]?.id || null
+        console.log(`[Import] Contato #${validContactIndex} -> Lista #${listIndex + 1} (${broadcastId})`)
+      }
+      
+      const contact = await createContact({ 
+        name: c.name, 
+        email: c.email || null, 
+        phone: c.phone || null, 
+        company: c.company || null, 
+        type: c.type || 'default',
+        broadcastId 
+      })
+      created.push(contact)
+      validContactIndex++
+      
+      console.log(`[Import] Contato criado: ${contact.name} - email: ${contact.email}, phone: ${contact.phone}`)
+      
+      // Adicionar à tabela de relacionamento se tiver lista
+      if (broadcastId) {
+        const { addContactsToListWithName } = await import('../utils/broadcasts')
+        await addContactsToListWithName(broadcastId, [{ id: contact.id, name: contact.name }])
+      }
+    }
+
+    console.log(`[Import] Total importado: ${created.length} contatos`)
     res.status(201).json({ created, count: created.length, listsCreated })
   } catch (error) {
     console.error('Import failed', error)

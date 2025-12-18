@@ -67,12 +67,14 @@ export async function deleteAppointment(id: string) {
   await db.delete(appointments).where(eq(appointments.id, id))
 }
 
-export async function toggleAvailabilityByDateTime(dateTime: Date) {
-  const [existing] = await db.select().from(appointments).where(eq(appointments.date_time, dateTime))
+export async function toggleAvailabilityByDateTime(dateTime: Date | string) {
+  // Aceitar tanto Date quanto string ISO com timezone
+  const dateTimeAsDate = typeof dateTime === 'string' ? new Date(dateTime) : dateTime
+  const [existing] = await db.select().from(appointments).where(eq(appointments.date_time, dateTimeAsDate))
 
   if (!existing) {
     // create as available by default when toggled
-    const created = await createAppointment({ date_time: dateTime, status: 'disponivel' })
+    const created = await createAppointment({ date_time: dateTimeAsDate, status: 'disponivel' })
     return created
   }
 

@@ -1,35 +1,120 @@
-import { Pool } from 'pg'
-
-// Use environment variables already configured in server; create a small pool for raw queries
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: Number(process.env.DB_PORT) || 5432,
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  database: process.env.DB_NAME || 'ubva_crm',
-})
+import { db } from '../db'
+import { broadcastLists, broadcastListContacts } from '../db/schema'
+import { eq } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 
 export async function getBroadcastLists() {
-  const res = await pool.query('SELECT id, name, description, contacts, created_at FROM broadcast_lists ORDER BY created_at DESC')
-  return res.rows.map(r => ({ id: String(r.id), name: r.name, description: r.description, contacts: r.contacts || [], createdAt: r.created_at }))
+  const lists = await db.select().from(broadcastLists).orderBy(sql`${broadcastLists.createdAt} DESC`)
+  
+  // Para cada lista, buscar os contatos vinculados
+  const listsWithContacts = await Promise.all(lists.map(async (list) => {
+    const contacts = await db
+      .select({ contactId: broadcastListContacts.contactId })
+      .from(broadcastListContacts)
+      .where(eq(broadcastListContacts.listId, list.id))
+    
+    return {
+      id: list.id,
+      name: list.name,
+      description: list.description,
+      contacts: contacts.map(c => c.contactId),
+      createdAt: list.createdAt?.toISOString()
+    }
+  }))
+  
+  return listsWithContacts
 }
 
 export async function createBroadcastList(name: string, description: string | null, contactIds: string[] = []) {
-  const res = await pool.query('INSERT INTO broadcast_lists (name, description, contacts) VALUES ($1, $2, $3) RETURNING id, name, description, contacts, created_at', [name, description, JSON.stringify(contactIds)])
-  const row = res.rows[0]
-  return { id: String(row.id), name: row.name, description: row.description, contacts: row.contacts || [], createdAt: row.created_at }
+  // Criar a lista
+  const [list] = await db.insert(broadcastLists).values({
+    id: sql`gen_random_uuid()`,
+    name,
+    description,
+  }).returning()
+  
+  // Inserir os contatos na tabela de relacionamento
+  if (contactIds.length > 0) {
+    await db.insert(broadcastListContacts).values(
+      contactIds.map(contactId => ({
+        listId: list.id,
+        contactId
+      }))
+    )
+  }
+  
+  return {
+    id: list.id,
+    name: list.name,
+    description: list.description,
+    contacts: contactIds,
+    createdAt: list.createdAt?.toISOString()
+  }
 }
 
 export async function addContactsToList(listId: string, contactIds: string[]) {
-  const q = await pool.query('SELECT contacts FROM broadcast_lists WHERE id = $1', [listId])
-  const current = (q.rows[0]?.contacts) || []
-  const unique = Array.from(new Set([...current, ...contactIds]))
-  await pool.query('UPDATE broadcast_lists SET contacts = $1 WHERE id = $2', [JSON.stringify(unique), listId])
-  const updated = await pool.query('SELECT id, name, description, contacts, created_at FROM broadcast_lists WHERE id = $1', [listId])
-  const row = updated.rows[0]
-  return { id: String(row.id), name: row.name, description: row.description, contacts: row.contacts || [], createdAt: row.created_at }
+  // Buscar contatos já existentes na lista
+  const existing = await db
+    .select({ contactId: broadcastListContacts.contactId })
+    .from(broadcastListContacts)
+    .where(eq(broadcastListContacts.listId, listId))
+  
+  const existingIds = new Set(existing.map(e => e.contactId))
+  const newContactIds = contactIds.filter(id => !existingIds.has(id))
+  
+  // Inserir apenas os novos contatos
+  if (newContactIds.length > 0) {
+    await db.insert(broadcastListContacts).values(
+      newContactIds.map(contactId => ({
+        listId,
+        contactId
+      }))
+    )
+  }
+  
+  // Buscar lista atualizada
+  const [list] = await db.select().from(broadcastLists).where(eq(broadcastLists.id, listId))
+  const allContacts = await db
+    .select({ contactId: broadcastListContacts.contactId })
+    .from(broadcastListContacts)
+    .where(eq(broadcastListContacts.listId, listId))
+  
+  return {
+    id: list.id,
+    name: list.name,
+    description: list.description,
+    contacts: allContacts.map(c => c.contactId),
+    createdAt: list.createdAt?.toISOString()
+  }
+}
+
+export async function addContactsToListWithName(listId: string, contacts: Array<{id: string, name: string}>) {
+  // Buscar contatos já existentes na lista
+  const existing = await db
+    .select({ contactId: broadcastListContacts.contactId })
+    .from(broadcastListContacts)
+    .where(eq(broadcastListContacts.listId, listId))
+  
+  const existingIds = new Set(existing.map(e => e.contactId))
+  const newContacts = contacts.filter(c => !existingIds.has(c.id))
+  
+  // Inserir apenas os novos contatos com nome
+  if (newContacts.length > 0) {
+    await db.insert(broadcastListContacts).values(
+      newContacts.map(contact => ({
+        listId,
+        contactId: contact.id,
+        name: contact.name
+      }))
+    )
+  }
+  
+  return newContacts.length
 }
 
 export async function deleteBroadcastList(id: string) {
-  await pool.query('DELETE FROM broadcast_lists WHERE id = $1', [id])
+  // Primeiro deletar os relacionamentos
+  await db.delete(broadcastListContacts).where(eq(broadcastListContacts.listId, id))
+  // Depois deletar a lista
+  await db.delete(broadcastLists).where(eq(broadcastLists.id, id))
 }

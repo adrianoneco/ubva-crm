@@ -22,6 +22,7 @@ export const webglassBot = pgTable('webglass_bot', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   kanbanStep: integer('kanban_step').default(0),
   avatar: text('avatar'),
+  agendamentoId: text('agendamento_id'),
 })
 
 // Appointments table for Agendamento (UUID primary key)
@@ -39,24 +40,27 @@ export const appointments = pgTable('appointments', {
 })
 
 export const contacts = pgTable('contacts', {
-  id: text('id').notNull().primaryKey(),
+  id: text('id').notNull().default(sql`gen_random_uuid()`).primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   email: varchar('email', { length: 255 }),
   phone: varchar('phone', { length: 50 }),
   company: varchar('company', { length: 255 }),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  broadcastId: text('broadcast_id'),
+  isWhatsapp: integer('is_whatsapp').default(0).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
 export const broadcastLists = pgTable('broadcast_lists', {
-  id: text('id').notNull().primaryKey(),
+  id: text('id').notNull().default(sql`gen_random_uuid()`).primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
 export const broadcastListContacts = pgTable('broadcast_list_contacts', {
   id: text('id').notNull().default(sql`gen_random_uuid()`).primaryKey(),
-  listId: text('list_id').notNull(),
-  contactId: text('contact_id').notNull(),
+  listId: text('list_id').notNull().references(() => broadcastLists.id, { onDelete: 'cascade' }),
+  contactId: text('contact_id').notNull().references(() => contacts.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }),
 })

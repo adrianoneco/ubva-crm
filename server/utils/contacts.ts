@@ -1,103 +1,93 @@
 import fs from 'fs/promises'
 import path from 'path'
-import { v4 as uuidv4 } from 'uuid'
+import { db } from '../db'
+import { contacts } from '../db/schema'
+import { eq } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 
 const DATA_DIR = path.join(process.cwd(), 'data', 'contacts')
 
 interface ContactData {
   id?: string
   name: string
-  email?: string
-  phone?: string
-  company?: string
+  email?: string | null
+  phone?: string | null
+  company?: string | null
   type?: string
   avatar?: string | null
+  broadcastId?: string | null
   createdAt?: string
   updatedAt?: string
 }
 
-async function ensureDir() {
-  await fs.mkdir(DATA_DIR, { recursive: true })
-}
-
-async function readAllContacts(): Promise<ContactData[]> {
-  await ensureDir()
-  const types = await fs.readdir(DATA_DIR).catch(() => [])
-  const all: ContactData[] = []
-  for (const t of types) {
-    const dir = path.join(DATA_DIR, t)
-    const files = await fs.readdir(dir).catch(() => [])
-    for (const f of files) {
-      if (f.endsWith('.json')) {
-        const content = await fs.readFile(path.join(dir, f), 'utf-8')
-        const obj = JSON.parse(content)
-        obj.type = t
-        all.push(obj)
-      }
-    }
-  }
-  return all
-}
-
 export async function getContacts() {
-  return await readAllContacts()
+  const rows = await db.select().from(contacts)
+  return rows.map(r => ({
+    id: r.id,
+    name: r.name,
+    email: r.email || undefined,
+    phone: r.phone || undefined,
+    company: r.company || undefined,
+    type: 'default',
+    avatar: null,
+    createdAt: r.createdAt?.toISOString(),
+    updatedAt: r.updatedAt?.toISOString()
+  }))
 }
 
 export async function createContact(data: ContactData) {
-  await ensureDir()
-  const type = data.type || 'default'
-  const dir = path.join(DATA_DIR, type)
-  await fs.mkdir(dir, { recursive: true })
-  const id = uuidv4()
-  const now = new Date().toISOString()
-  const contact: ContactData = {
-    id,
+  const [contact] = await db.insert(contacts).values({
+    id: sql`gen_random_uuid()`,
     name: data.name,
-    email: data.email || undefined,
-    phone: data.phone || undefined,
-    company: data.company || undefined,
-    type,
+    email: data.email || null,
+    phone: data.phone || null,
+    company: data.company || null,
+    broadcastId: data.broadcastId || null,
+  }).returning()
+  
+  return {
+    id: contact.id,
+    name: contact.name,
+    email: contact.email || undefined,
+    phone: contact.phone || undefined,
+    company: contact.company || undefined,
+    broadcastId: contact.broadcastId || undefined,
+    type: 'default',
     avatar: null,
-    createdAt: now,
-    updatedAt: now,
+    createdAt: contact.createdAt?.toISOString(),
+    updatedAt: contact.updatedAt?.toISOString()
   }
-  await fs.writeFile(path.join(dir, `${id}.json`), JSON.stringify(contact, null, 2))
-  return contact
 }
 
 export async function updateContact(id: string, data: Partial<ContactData>) {
-  const all = await readAllContacts()
-  const contact = all.find(c => c.id === id)
-  if (!contact) throw new Error('Contact not found')
+  const [updated] = await db.update(contacts)
+    .set({
+      name: data.name,
+      email: data.email || null,
+      phone: data.phone || null,
+      company: data.company || null,
+      updatedAt: new Date()
+    })
+    .where(eq(contacts.id, id))
+    .returning()
 
-  const oldType = contact.type || 'default'
-  const newType = data.type || oldType
+  if (!updated) throw new Error('Contact not found')
 
-  const updated = {
-    ...contact,
-    ...data,
-    updatedAt: new Date().toISOString(),
+  return {
+    id: updated.id,
+    name: updated.name,
+    email: updated.email || undefined,
+    phone: updated.phone || undefined,
+    company: updated.company || undefined,
+    type: 'default',
+    avatar: null,
+    createdAt: updated.createdAt?.toISOString(),
+    updatedAt: updated.updatedAt?.toISOString()
   }
-
-  // write to new type dir if changed
-  if (newType !== oldType) {
-    const oldPath = path.join(DATA_DIR, oldType, `${id}.json`)
-    await fs.unlink(oldPath).catch(() => {})
-    const newDir = path.join(DATA_DIR, newType)
-    await fs.mkdir(newDir, { recursive: true })
-    await fs.writeFile(path.join(newDir, `${id}.json`), JSON.stringify({ ...updated, type: newType }, null, 2))
-  } else {
-    const filePath = path.join(DATA_DIR, oldType, `${id}.json`)
-    await fs.writeFile(filePath, JSON.stringify(updated, null, 2))
-  }
-
-  return updated
 }
 
 export async function deleteContact(id: string) {
-  const all = await readAllContacts()
-  const contact = all.find(c => c.id === id)
-  if (!contact) return
+  await db.delete(contacts).where(eq(contacts.id, id))
   const dir = path.join(DATA_DIR, contact.type || 'default')
   await fs.unlink(path.join(dir, `${id}.json`)).catch(() => {})
   await fs.unlink(path.join(dir, `${id}-avatar.png`)).catch(() => {})
@@ -110,11 +100,26 @@ export async function saveAvatar(id: string, type: string, buffer: Buffer, ext: 
   await fs.writeFile(filePath, buffer)
 
   // update JSON
-  const jsonPath = path.join(dir, `${id}.json`)
-  const content = await fs.readFile(jsonPath, 'utf-8')
-  const obj = JSON.parse(content)
-  obj.avatar = `/data/contacts/${type}/${id}-avatar${ext}`
-  obj.updatedAt = new Date().toISOString()
-  await fs.writeFile(jsonPath, JSON.stringify(obj, null, 2))
-  return obj
+  // Para manter compatibilidade com avatares, ainda salvamos localmente
+  await fs.mkdir(dir, { recursive: true })
+  const avatarPath = path.join(dir, `${id}-avatar${ext}`)
+  await fs.writeFile(avatarPath, buffer)
+  
+  // Atualizar no banco
+  const [updated] = await db.update(contacts)
+    .set({ updatedAt: new Date() })
+    .where(eq(contacts.id, id))
+    .returning()
+  
+  return {
+    id: updated.id,
+    name: updated.name,
+    email: updated.email || undefined,
+    phone: updated.phone || undefined,
+    company: updated.company || undefined,
+    type,
+    avatar: `/data/contacts/${type}/${id}-avatar${ext}`,
+    createdAt: updated.createdAt?.toISOString(),
+    updatedAt: updated.updatedAt?.toISOString()
+  }
 }

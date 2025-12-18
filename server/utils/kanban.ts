@@ -1,9 +1,28 @@
 import { db } from '../db'
-import { webglassBot } from '../db/schema'
+import { webglassBot, appointments } from '../db/schema'
 import { eq } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 
 export async function getKanbanUsers() {
-  return await db.select().from(webglassBot).orderBy(webglassBot.kanbanStep)
+  // Fazer LEFT JOIN com appointments para pegar informações do agendamento
+  const users = await db
+    .select({
+      id: webglassBot.id,
+      name: webglassBot.name,
+      phone: webglassBot.phone,
+      email: webglassBot.email,
+      role: webglassBot.role,
+      avatar: webglassBot.avatar,
+      kanbanStep: webglassBot.kanbanStep,
+      createdAt: webglassBot.createdAt,
+      agendamentoId: webglassBot.agendamentoId,
+      appointmentDateTime: appointments.date_time,
+    })
+    .from(webglassBot)
+    .leftJoin(appointments, eq(webglassBot.agendamentoId, appointments.id))
+    .orderBy(webglassBot.kanbanStep)
+  
+  return users
 }
 
 export async function createKanbanUser(data: {

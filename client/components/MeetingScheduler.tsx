@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { io, Socket } from 'socket.io-client'
+import { io } from 'socket.io-client'
 import { getApiUrl } from '../config'
 
 interface Schedule {
@@ -49,7 +49,8 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [loading, setLoading] = useState(false)
   const [allowedDays, setAllowedDays] = useState<string[] | null>(null)
-  const [socket, setSocket] = useState<Socket | null>(null)
+  const [clickingSlot, setClickingSlot] = useState<string | null>(null)
+  const [hoveredSlots, setHoveredSlots] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     fetchSchedules()
@@ -58,7 +59,6 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
     const socketUrl = `${window.location.protocol}//${window.location.host}`
     console.log('[MeetingScheduler] Connecting to socket:', socketUrl)
     const newSocket = io(socketUrl, { path: '/socket.io' })
-    setSocket(newSocket)
 
     newSocket.on('connect', () => {
       console.log('[MeetingScheduler] ✅ Socket connected:', newSocket.id)
@@ -70,7 +70,12 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
 
     newSocket.on('schedule-update', () => {
       console.log('[MeetingScheduler] 🔄 Schedule update received, refreshing...')
-      fetchSchedules()
+      // Não atualizar se houver slots com hover ou sendo clicados
+      if (clickingSlot === null && hoveredSlots.size === 0) {
+        fetchSchedules()
+      } else {
+        console.log('[MeetingScheduler] ⏸️ Skipping update - user is interacting')
+      }
     })
 
     return () => {
@@ -91,6 +96,7 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
         `${apiUrl}/api/agendamento?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
       )
       const data = await response.json()
+      console.log('[MeetingScheduler] Schedules received:', data)
       setSchedules(data)
     } catch (error) {
       console.error('Failed to fetch appointments:', error)
@@ -100,27 +106,45 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
   }
 
   const handleTimeSlotClick = async (timeSlot: string) => {
-    const scheduleDate = new Date(selectedDate)
-    const [hours] = timeSlot.split(':')
-    scheduleDate.setHours(parseInt(hours), 0, 0, 0)
+    setClickingSlot(timeSlot)
+    
+    const [hours, minutes] = timeSlot.split(':').map(v => parseInt(v))
+    
+    // Construir data no timezone local (America/Sao_Paulo UTC-3)
+    const year = selectedDate.getFullYear()
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
+    const day = String(selectedDate.getDate()).padStart(2, '0')
+    const hoursStr = String(hours).padStart(2, '0')
+    const minutesStr = String(minutes || 0).padStart(2, '0')
+    
+    // Formato ISO com offset de São Paulo: YYYY-MM-DDTHH:mm:ss-03:00
+    const dateTimeISO = `${year}-${month}-${day}T${hoursStr}:${minutesStr}:00-03:00`
 
     // Prevent toggling when selected day is not allowed by settings
     if (allowedDays) {
       const names = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
       const wd = names[selectedDate.getDay()]
-      if (!allowedDays.includes(wd)) return
+      if (!allowedDays.includes(wd)) {
+        setClickingSlot(null)
+        return
+      }
     }
 
     // Toggle appointment by datetime (server will create if missing)
     try {
       const apiUrl = getApiUrl()
-      const payload: any = { date_time: scheduleDate.toISOString() }
+      const payload: any = { date_time: dateTimeISO }
       if (selectedContact?.id) payload.contactId = selectedContact.id
       const response = await fetch(`${apiUrl}/api/agendamento/toggle-availability`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
+      
+      if (!response.ok) {
+        throw new Error('Failed to toggle appointment')
+      }
+      
       const updated = await response.json()
 
       // Update local state: replace or add
@@ -132,27 +156,42 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
       } else {
         setSchedules([...schedules, updated])
       }
-      // Emit socket event to notify other clients
-      console.log('[MeetingScheduler] 📤 Emitting schedule-changed event')
-      socket?.emit('schedule-changed')
     } catch (error) {
       console.error('Failed to toggle appointment:', error)
+    } finally {
+      setClickingSlot(null)
     }
   }
 
   const isSlotAvailable = (timeSlot: string) => {
-    const schedule = schedules.find(
-      s => new Date(s.date_time).getHours() === parseInt(timeSlot.split(':')[0]) &&
-           new Date(s.date_time).toDateString() === selectedDate.toDateString()
-    )
+    const [slotHours] = timeSlot.split(':').map(v => parseInt(v))
+    const schedule = schedules.find(s => {
+      // Extrair diretamente da string ISO: YYYY-MM-DDTHH:mm:ss-03:00
+      const dateTimeStr = typeof s.date_time === 'string' ? s.date_time : new Date(s.date_time).toISOString()
+      const [datepart, timepart] = dateTimeStr.split('T')
+      const aptHours = parseInt(timepart.split(':')[0])
+      
+      const selectedDateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
+      const isSameDay = datepart === selectedDateStr
+      
+      return aptHours === slotHours && isSameDay
+    })
     return schedule?.status === 'disponivel' || false
   }
 
   const isSlotBooked = (timeSlot: string) => {
-    const schedule = schedules.find(
-      s => new Date(s.date_time).getHours() === parseInt(timeSlot.split(':')[0]) &&
-           new Date(s.date_time).toDateString() === selectedDate.toDateString()
-    )
+    const [slotHours] = timeSlot.split(':').map(v => parseInt(v))
+    const schedule = schedules.find(s => {
+      // Extrair diretamente da string ISO: YYYY-MM-DDTHH:mm:ss-03:00
+      const dateTimeStr = typeof s.date_time === 'string' ? s.date_time : new Date(s.date_time).toISOString()
+      const [datepart, timepart] = dateTimeStr.split('T')
+      const aptHours = parseInt(timepart.split(':')[0])
+      
+      const selectedDateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
+      const isSameDay = datepart === selectedDateStr
+      
+      return aptHours === slotHours && isSameDay
+    })
     return !!(schedule && schedule.status === 'agendado')
   }
 
@@ -263,26 +302,60 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
           </div>
         )}
 
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-10 h-10 border-4 border-blue-200 dark:border-blue-800 border-t-blue-500 rounded-full animate-spin"></div>
-              <span className="text-gray-500 dark:text-gray-400">Carregando...</span>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {timeSlots.map(slot => {
+                const [slotHours, slotMinutes] = slot.split(':').map(v => parseInt(v))
+                
+                // Regra 1: Pelo menos 1 hora no futuro
+                const now = new Date()
+                const slotDateTime = new Date(selectedDate)
+                slotDateTime.setHours(slotHours, slotMinutes, 0, 0)
+                const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000)
+                
+                if (slotDateTime < oneHourFromNow) {
+                  return null
+                }
+                
+                // Regra 2: Horário mínimo - 09:00 (1h após início às 08:00)
+                if (slotHours < 9) {
+                  return null
+                }
+                
+                // Regra 3: Horário máximo - até 1h antes do fim de expediente
+                const dayOfWeek = selectedDate.getDay() // 0=Dom, 5=Sex
+                const maxHour = dayOfWeek === 5 ? 16 : 17 // Sexta até 16h, outros até 17h
+                
+                if (slotHours > maxHour) {
+                  return null
+                }
+                
+                // Verificar se o dia está permitido nas configurações
+                if (allowedDays) {
+                  const names = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+                  const weekdayName = names[selectedDate.getDay()]
+                  if (!allowedDays.includes(weekdayName)) {
+                    return null
+                  }
+                }
+                
                 const available = isSlotAvailable(slot)
                 const booked = isSlotBooked(slot)
+                const isClicking = clickingSlot === slot
 
                 return (
                   <button
                     key={slot}
                     onClick={() => handleTimeSlotClick(slot)}
+                    onMouseEnter={() => setHoveredSlots(prev => new Set(prev).add(slot))}
+                    onMouseLeave={() => setHoveredSlots(prev => {
+                      const next = new Set(prev)
+                      next.delete(slot)
+                      return next
+                    })}
+                    disabled={isClicking}
                     className={`
-                      p-4 rounded-xl border-2 font-medium transition-all
+                      p-4 rounded-xl border-2 font-medium transition-all relative
+                      ${isClicking ? 'opacity-50 cursor-wait' : ''}
                       ${available
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 shadow-sm'
                         : booked
@@ -291,6 +364,11 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
                       }
                     `}
                   >
+                    {isClicking && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-800/50 rounded-xl">
+                        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
                     <div className="text-lg">{slot}</div>
                     <div className="text-xs mt-1">
                       {available ? 'Disponível' : booked ? 'Agendado' : 'não disponivel'}
@@ -314,8 +392,6 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
                 <span className="text-gray-600 dark:text-gray-400">não disponivel</span>
               </div>
             </div>
-          </>
-        )}
       </div>
     </div>
   )

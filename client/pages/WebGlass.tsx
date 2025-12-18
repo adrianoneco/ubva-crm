@@ -12,6 +12,8 @@ interface KanbanUser {
   avatar: string | null
   kanbanStep: number
   createdAt: string
+  agendamentoId?: string | null
+  appointmentDateTime?: string | null
 }
 
 const KANBAN_STEPS = [
@@ -265,7 +267,7 @@ export default function WebGlass() {
                 {getUsersByStep(step.id).map(user => (
                   <div
                     key={user.id}
-                    className="bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                    className="bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer group relative"
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.setData('userId', user.id)
@@ -280,6 +282,13 @@ export default function WebGlass() {
                       }
                     }}
                   >
+                    {user.agendamentoId && user.appointmentDateTime && (
+                      <div className="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full p-1.5 shadow-lg" title={`Agendamento: ${new Date(user.appointmentDateTime).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    )}
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3 flex-1">
                         {user.avatar ? (
@@ -310,10 +319,42 @@ export default function WebGlass() {
                               {user.role}
                             </span>
                           )}
+                          {user.agendamentoId && user.appointmentDateTime && (() => {
+                            const dateTimeStr = typeof user.appointmentDateTime === 'string' ? user.appointmentDateTime : new Date(user.appointmentDateTime).toISOString()
+                            const [datepart, timepart] = dateTimeStr.split('T')
+                            const [, month, day] = datepart.split('-')
+                            const time = timepart.split(':').slice(0, 2).join(':')
+                            return (
+                              <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                                <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  </svg>
+                                  <span className="font-medium">{day}/{month}</span>
+                                  <span className="mx-1">•</span>
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                  <span className="font-medium">{time}</span>
+                                </div>
+                              </div>
+                            )
+                          })()}
                         </div>
                       </div>
 
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {user.kanbanStep < 7 && (
+                          <button
+                            onClick={() => moveUser(user.id, user.kanbanStep + 1)}
+                            className="p-1 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/30 rounded"
+                            title="Próximo"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                            </svg>
+                          </button>
+                        )}
                         <button
                           onClick={() => openEditModal(user)}
                           className="p-1 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded"
