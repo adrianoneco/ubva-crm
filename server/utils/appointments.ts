@@ -71,6 +71,12 @@ export async function toggleAvailabilityByDateTime(dateTime: Date | string) {
   // Aceitar tanto Date quanto string ISO com timezone
   const dateTimeAsDate = typeof dateTime === 'string' ? new Date(dateTime) : dateTime
   const [existing] = await db.select().from(appointments).where(eq(appointments.date_time, dateTimeAsDate))
+  // If an appointment is already booked at this exact datetime, do not allow toggling
+  if (existing && existing.status === 'agendado') {
+    const err: any = new Error('TIME_SLOT_BOOKED')
+    err.code = 'TIME_SLOT_BOOKED'
+    throw err
+  }
 
   if (!existing) {
     // create as available by default when toggled

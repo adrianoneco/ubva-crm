@@ -69,6 +69,10 @@ router.post('/toggle-availability', async (req, res) => {
     res.json(toggled)
   } catch (err) {
     console.error('Toggle appointment availability error:', err)
+    // If the toggle failed because the slot is booked, return 409 Conflict
+    if (err && (err.code === 'TIME_SLOT_BOOKED' || err.message === 'TIME_SLOT_BOOKED')) {
+      return res.status(409).json({ error: 'Time slot already booked' })
+    }
     res.status(500).json({ error: 'Failed to toggle appointment availability' })
   }
 })

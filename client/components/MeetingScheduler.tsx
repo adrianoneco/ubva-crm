@@ -48,6 +48,7 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [loading, setLoading] = useState(false)
+  const [notification, setNotification] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [allowedDays, setAllowedDays] = useState<string[] | null>(null)
   const [clickingSlot, setClickingSlot] = useState<string | null>(null)
   const [hoveredSlots, setHoveredSlots] = useState<Set<string>>(new Set())
@@ -142,11 +143,18 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      
+      // Handle specific conflict when slot is already booked
+      if (response.status === 409) {
+        setNotification({ type: 'error', text: 'Este horário já está agendado.' })
+        setClickingSlot(null)
+        setTimeout(() => setNotification(null), 4000)
+        return
+      }
+
       if (!response.ok) {
         throw new Error('Failed to toggle appointment')
       }
-      
+
       const updated = await response.json()
 
       // Update local state: replace or add
@@ -160,6 +168,8 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
       }
     } catch (error) {
       console.error('Failed to toggle appointment:', error)
+      setNotification({ type: 'error', text: 'Erro ao alterar o agendamento. Tente novamente.' })
+      setTimeout(() => setNotification(null), 4000)
     } finally {
       setClickingSlot(null)
     }
@@ -216,6 +226,12 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
   const monthName = selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
 
   return (
+    <>
+      {notification && (
+        <div className={`mb-4 p-3 rounded-lg text-sm ${notification.type === 'error' ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'}`}>
+          {notification.text}
+        </div>
+      )}
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-4">
@@ -386,5 +402,6 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
             </div>
       </div>
     </div>
+    </>
   )
 }
