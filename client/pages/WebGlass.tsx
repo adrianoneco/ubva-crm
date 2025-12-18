@@ -344,17 +344,6 @@ export default function WebGlass() {
                       </div>
 
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {user.kanbanStep < 7 && (
-                          <button
-                            onClick={() => moveUser(user.id, user.kanbanStep + 1)}
-                            className="p-1 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/30 rounded"
-                            title="Próximo"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                            </svg>
-                          </button>
-                        )}
                         <button
                           onClick={() => openEditModal(user)}
                           className="p-1 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded"
@@ -377,14 +366,25 @@ export default function WebGlass() {
                     </div>
 
                     {/* Move buttons */}
-                    {step.id > 0 && (
-                      <div className="flex mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                        <button
-                          onClick={() => moveUser(user.id, step.id - 1)}
-                          className="flex-1 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 rounded text-gray-700 dark:text-gray-200"
-                        >
-                          ← Anterior
-                        </button>
+                    {(step.id > 0 || step.id < KANBAN_STEPS.length - 1) && (
+                      <div className="flex mt-3 pt-3 border-t border-gray-200 dark:border-gray-600 gap-2">
+                        {step.id > 0 && (
+                          <button
+                            onClick={() => moveUser(user.id, step.id - 1)}
+                            className="flex-1 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 rounded text-gray-700 dark:text-gray-200"
+                          >
+                            ← Anterior
+                          </button>
+                        )}
+
+                        {step.id < KANBAN_STEPS.length - 1 && (
+                          <button
+                            onClick={() => moveUser(user.id, step.id + 1)}
+                            className="flex-1 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 rounded text-gray-700 dark:text-gray-200"
+                          >
+                            Próximo →
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
