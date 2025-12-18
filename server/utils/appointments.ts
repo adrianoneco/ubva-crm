@@ -29,6 +29,18 @@ export async function createAppointment(data: {
   phone?: string
   meet_link?: string
 }) {
+  // If creating a booked appointment, ensure no other booked appointment exists at same datetime
+  if (data.status === 'agendado') {
+    const [conflict] = await db.select().from(appointments).where(
+      and(eq(appointments.date_time, data.date_time), eq(appointments.status, 'agendado'))
+    )
+
+    if (conflict) {
+      const err: any = new Error('TIME_SLOT_BOOKED')
+      err.code = 'TIME_SLOT_BOOKED'
+      throw err
+    }
+  }
   const [row] = await db.insert(appointments).values({
     id: randomUUID(),
     title: data.title || null,
@@ -70,13 +82,18 @@ export async function deleteAppointment(id: string) {
 export async function toggleAvailabilityByDateTime(dateTime: Date | string) {
   // Aceitar tanto Date quanto string ISO com timezone
   const dateTimeAsDate = typeof dateTime === 'string' ? new Date(dateTime) : dateTime
-  const [existing] = await db.select().from(appointments).where(eq(appointments.date_time, dateTimeAsDate))
-  // If an appointment is already booked at this exact datetime, do not allow toggling
-  if (existing && existing.status === 'agendado') {
+  // If any appointment is booked at this datetime, disallow toggling
+  const [booked] = await db.select().from(appointments).where(
+    and(eq(appointments.date_time, dateTimeAsDate), eq(appointments.status, 'agendado'))
+  )
+
+  if (booked) {
     const err: any = new Error('TIME_SLOT_BOOKED')
     err.code = 'TIME_SLOT_BOOKED'
     throw err
   }
+
+  const [existing] = await db.select().from(appointments).where(eq(appointments.date_time, dateTimeAsDate))
 
   if (!existing) {
     // create as available by default when toggled

@@ -41,6 +41,9 @@ router.post('/', async (req, res) => {
     res.status(201).json(row)
   } catch (err) {
     console.error('Create appointment error:', err)
+    if (err && (err.code === 'TIME_SLOT_BOOKED' || err.message === 'TIME_SLOT_BOOKED')) {
+      return res.status(409).json({ error: 'Time slot already booked' })
+    }
     res.status(500).json({ error: 'Failed to create appointment' })
   }
 })
@@ -107,7 +110,7 @@ router.get('/disponiveis/whatsapp', verifyApiKey, async (_req, res) => {
     // 1. Pelo menos 1h no futuro
     // 2. Horário de trabalho: 09:00-17:00 (seg-qui), 09:00-16:00 (sex)
     
-    // Criar data/hora atual no timezone de São Paulo (UTC-3)
+    // Calcular data/hora atual no timezone de São Paulo (UTC-3) usando timestamp adjustment
     const nowUTC = new Date()
     const nowSPTimestamp = nowUTC.getTime() - (3 * 60 * 60 * 1000) // UTC-3
     const nowSP = new Date(nowSPTimestamp)
@@ -117,55 +120,58 @@ router.get('/disponiveis/whatsapp', verifyApiKey, async (_req, res) => {
     const currentHour = nowSP.getUTCHours()
     const currentMinutes = nowSP.getUTCMinutes()
     const todayStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`
-    
+
     console.log(`📅 Hoje (SP): ${todayStr} ${currentHour}:${String(currentMinutes).padStart(2, '0')}`)
     console.log(`⏰ Mínimo: ${currentHour + 1}:${String(currentMinutes).padStart(2, '0')} (1h no futuro)`)
-    
+
     const futureAppointments = disponiveisRows.filter(apt => {
-      // Extrair hora diretamente da string ISO: YYYY-MM-DDTHH:mm:ss-03:00
-      const dateTimeStr = typeof apt.date_time === 'string' ? apt.date_time : new Date(apt.date_time).toISOString()
-      const [datepart, timepart] = dateTimeStr.split('T')
-      const [hoursStr, minutesStr] = timepart.split(':')
-      const aptHours = parseInt(hoursStr)
-      const aptMinutes = parseInt(minutesStr)
-      
-      console.log(`  🔍 ${datepart} ${hoursStr}:${minutesStr}`)
-      
+      // apt.date_time is a timestamptz; create Date and convert to SP by subtracting 3h
+      const aptDate = new Date(apt.date_time)
+      const aptSP = new Date(aptDate.getTime() - (3 * 60 * 60 * 1000))
+
+      const year = aptSP.getUTCFullYear()
+      const month = String(aptSP.getUTCMonth() + 1).padStart(2, '0')
+      const day = String(aptSP.getUTCDate()).padStart(2, '0')
+      const hours = aptSP.getUTCHours()
+      const minutes = aptSP.getUTCMinutes()
+
+      const datepart = `${year}-${month}-${day}`
+
+      console.log(`  🔍 ${datepart} ${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}`)
+
       const isToday = datepart === todayStr
-      
+
       // Regra 1: Se for hoje, deve estar pelo menos 1h no futuro
       if (isToday) {
-        const aptTimeInMinutes = aptHours * 60 + aptMinutes
+        const aptTimeInMinutes = hours * 60 + minutes
         const nowInMinutes = currentHour * 60 + currentMinutes
         const minTimeInMinutes = nowInMinutes + 60
-        
+
         console.log(`    ⏱️  Apt: ${aptTimeInMinutes}min, Agora: ${nowInMinutes}min, Mín: ${minTimeInMinutes}min → Passa? ${aptTimeInMinutes >= minTimeInMinutes}`)
-        
-        // Deve ser >= 1h no futuro (não apenas >)
+
         if (aptTimeInMinutes < minTimeInMinutes) {
           return false
         }
       }
-      
-      // Extrair dia da semana
-      const aptDateObj = new Date(datepart + 'T12:00:00Z')
-      const dayOfWeek = aptDateObj.getUTCDay() // 0=Dom, 5=Sex
-      
+
+      // Extrair dia da semana a partir da data em SP
+      const dayOfWeek = aptSP.getUTCDay() // 0=Dom, 5=Sex
+
       // Regra 2: Horário mínimo 09:00
-      if (aptHours < 9) {
+      if (hours < 9) {
         console.log(`    ❌ Antes das 9h`)
         return false
       }
-      
+
       // Regra 3: Horário máximo - Sexta: 16:00, Seg-Qui: 17:00
       const isFriday = dayOfWeek === 5
       const maxHour = isFriday ? 16 : 17
-      
-      if (aptHours > maxHour) {
+
+      if (hours > maxHour) {
         console.log(`    ❌ Depois do máximo (${maxHour}h)`)
         return false
       }
-      
+
       console.log(`    ✅ Aprovado`)
       return true
     })
