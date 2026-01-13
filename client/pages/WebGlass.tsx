@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
 import MainLayout from '../components/MainLayout'
-import MeetingScheduler from '../components/MeetingScheduler'
 
 interface KanbanUser {
   id: string
@@ -30,7 +29,6 @@ const KANBAN_STEPS = [
 ]
 
 export default function WebGlass() {
-  const [activeTab, setActiveTab] = useState<'evolucao' | 'agendamentos'>('evolucao')
   const [users, setUsers] = useState<KanbanUser[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -196,47 +194,13 @@ export default function WebGlass() {
     <MainLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">WebGlass</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Pipeline</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Gerencie o fluxo de clientes e agendamentos
+            Gerencie o fluxo de clientes
           </p>
         </div>
 
-        {/* Tabs */}
-        <div className="border-b border-gray-200 dark:border-gray-700">
-          <nav className="flex gap-4">
-            <button
-              onClick={() => setActiveTab('evolucao')}
-              className={`pb-4 px-2 font-medium text-sm transition-all relative ${
-                activeTab === 'evolucao'
-                  ? 'text-blue-500 dark:text-blue-400'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-            >
-              Evolução (Kanban)
-              {activeTab === 'evolucao' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 dark:bg-blue-400"></div>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('agendamentos')}
-              className={`pb-4 px-2 font-medium text-sm transition-all relative ${
-                activeTab === 'agendamentos'
-                  ? 'text-blue-500 dark:text-blue-400'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-            >
-              Agendamentos
-              {activeTab === 'agendamentos' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 dark:bg-blue-400"></div>
-              )}
-            </button>
-          </nav>
-        </div>
-
-        {/* Tab Content */}
-        {activeTab === 'evolucao' ? (
-          <>
+        {/* Kanban Board */}
             {/* Kanban Board with Horizontal Scroll */}
             <div className="relative" style={{ height: 'calc(100vh - 280px)' }}>
               <div 
@@ -456,12 +420,7 @@ export default function WebGlass() {
               ))}
               </div>
             </div>
-          </>
-        ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-            <MeetingScheduler />
-          </div>
-        )}
+
       </div>
 
       {/* Add/Edit Modal */}

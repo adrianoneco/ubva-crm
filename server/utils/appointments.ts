@@ -95,20 +95,61 @@ export async function toggleAvailabilityByDateTime(dateTime: Date | string) {
 
   const [existing] = await db.select().from(appointments).where(eq(appointments.date_time, dateTimeAsDate))
 
+  let updated: any
+  let previousStatus: string | undefined
+
   if (!existing) {
     // create as available by default when toggled
-    const created = await createAppointment({ date_time: dateTimeAsDate, status: 'disponivel' })
-    return created
+    updated = await createAppointment({ date_time: dateTimeAsDate, status: 'disponivel' })
+    previousStatus = undefined
+  } else {
+    previousStatus = existing.status
+    // Toggle between 'disponivel' and 'nao_disponivel' (do NOT set 'agendado')
+    const newStatus = existing.status === 'disponivel' ? 'nao_disponivel' : 'disponivel'
+
+    const [result] = await db
+      .update(appointments)
+      .set({ status: newStatus })
+      .where(eq(appointments.id, existing.id))
+      .returning()
+
+    updated = result
   }
 
-  // Toggle between 'disponivel' and 'nao_disponivel' (do NOT set 'agendado')
-  const newStatus = existing.status === 'disponivel' ? 'nao_disponivel' : 'disponivel'
+  // Dispatch webhook on every status change
+  const webhookUrl = process.env.KB_WEBHOOK_URL
+  if (webhookUrl) {
+    ;(async () => {
+      try {
+        const event = updated.status === 'disponivel' ? 'schedule_available' : 'schedule_unavailable'
+        const payload = JSON.stringify({
+          event,
+          appointment: updated,
+          previousStatus,
+          newStatus: updated.status,
+          timestamp: new Date().toISOString(),
+        })
 
-  const [updated] = await db
-    .update(appointments)
-    .set({ status: newStatus })
-    .where(eq(appointments.id, existing.id))
-    .returning()
+        const secret = process.env.KB_WEBHOOK_SECRET
+        const headers: any = { 'Content-Type': 'application/json' }
+
+        if (secret) {
+          const crypto = await import('crypto')
+          const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex')
+          headers['X-Webhook-Signature'] = `sha256=${hmac}`
+        }
+
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers,
+          body: payload,
+        })
+        console.log(`[Schedule] Webhook sent for ${event}:`, updated.id)
+      } catch (err) {
+        console.error('[Schedule] Webhook error:', err)
+      }
+    })()
+  }
 
   return updated
 }

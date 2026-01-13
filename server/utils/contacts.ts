@@ -93,6 +93,50 @@ export async function deleteContact(id: string) {
   await fs.unlink(path.join(dir, `${id}-avatar.png`)).catch(() => {})
 }
 
+// Normaliza telefone removendo caracteres não numéricos
+function normalizePhone(phone: string | null | undefined): string | null {
+  if (!phone) return null
+  return phone.replace(/\D/g, '')
+}
+
+// Busca contato pelo telefone normalizado
+export async function findContactByPhone(phone: string | null | undefined) {
+  const normalized = normalizePhone(phone)
+  if (!normalized) return null
+  
+  const rows = await db.select().from(contacts)
+  const found = rows.find(r => normalizePhone(r.phone) === normalized)
+  return found || null
+}
+
+// Cria ou atualiza contato usando telefone como chave primária
+export async function upsertContactByPhone(data: {
+  name: string
+  email?: string | null
+  phone?: string | null
+  company?: string | null
+}) {
+  if (!data.phone) {
+    // Sem telefone, apenas cria novo contato
+    return createContact(data)
+  }
+  
+  const existing = await findContactByPhone(data.phone)
+  
+  if (existing) {
+    // Atualiza contato existente
+    return updateContact(existing.id, {
+      name: data.name || existing.name,
+      email: data.email ?? existing.email,
+      phone: data.phone || existing.phone,
+      company: data.company ?? existing.company,
+    })
+  } else {
+    // Cria novo contato
+    return createContact(data)
+  }
+}
+
 export async function saveAvatar(id: string, type: string, buffer: Buffer, ext: string) {
   const dir = path.join(DATA_DIR, type || 'default')
   await fs.mkdir(dir, { recursive: true })

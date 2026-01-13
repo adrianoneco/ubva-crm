@@ -1,6 +1,7 @@
 import { db } from '../db'
 import { webglassBot, appointments } from '../db/schema'
 import { eq } from 'drizzle-orm'
+import { upsertContactByPhone } from './contacts'
 
 export async function getKanbanUsers() {
   // Fazer LEFT JOIN com appointments para pegar informações do agendamento
@@ -46,6 +47,19 @@ export async function createKanbanUser(data: {
     kanbanStep: data.kanbanStep || 0,
   }).returning()
 
+  // Sincroniza com contatos usando telefone como chave
+  try {
+    await upsertContactByPhone({
+      name: data.name,
+      email: data.email || null,
+      phone: data.phone || null,
+      company: data.role || null,
+    })
+    console.log('[Kanban] Contact synced for:', data.phone)
+  } catch (err) {
+    console.error('[Kanban] Failed to sync contact:', err)
+  }
+
   return user
 }
 
@@ -68,6 +82,22 @@ export async function updateKanbanUser(
     .returning()
 
   console.log('[Kanban Utils] Updated user result:', { id: user.id, kanbanStep: user.kanbanStep })
+
+  // Sincroniza com contatos se tiver telefone
+  if (user.phone && !user.phone.startsWith('unknown-')) {
+    try {
+      await upsertContactByPhone({
+        name: user.name,
+        email: user.email || null,
+        phone: user.phone,
+        company: user.role || null,
+      })
+      console.log('[Kanban] Contact synced for:', user.phone)
+    } catch (err) {
+      console.error('[Kanban] Failed to sync contact:', err)
+    }
+  }
+
   return user
 }
 

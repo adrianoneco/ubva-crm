@@ -7,6 +7,7 @@ export const users = pgTable('users', {
   name: varchar('name', { length: 255 }).notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   password: varchar('password', { length: 255 }).notNull(),
+  role: varchar('role', { length: 50 }).notNull().default('user'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -76,4 +77,50 @@ export const broadcastListContacts = pgTable('broadcast_list_contacts', {
   listId: text('list_id').notNull().references(() => broadcastLists.id, { onDelete: 'cascade' }),
   contactId: text('contact_id').notNull().references(() => contacts.id, { onDelete: 'cascade' }),
   name: varchar('name', { length: 255 }),
+})
+
+// Campaigns table for marketing campaigns
+export const campaigns = pgTable('campaigns', {
+  id: text('id').notNull().default(sql`gen_random_uuid()`).primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  message: text('message').notNull(),
+  status: varchar('status', { length: 50 }).notNull().default('draft'),
+  broadcastListId: text('broadcast_list_id').references(() => broadcastLists.id, { onDelete: 'set null' }),
+  scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
+  sentCount: integer('sent_count').default(0).notNull(),
+  totalCount: integer('total_count').default(0).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+// Sales table for tracking lead values and outcomes
+export const sales = pgTable('sales', {
+  id: text('id').notNull().default(sql`gen_random_uuid()`).primaryKey(),
+  leadId: text('lead_id').notNull().references(() => webglassBot.id, { onDelete: 'cascade' }),
+  value: integer('value').default(0).notNull(),
+  status: varchar('status', { length: 50 }).notNull().default('pending'),
+  notes: text('notes'),
+  closedAt: timestamp('closed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+// Webhooks configuration table
+export const webhooks = pgTable('webhooks', {
+  id: text('id').notNull().default(sql`gen_random_uuid()`).primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  url: text('url').notNull(),
+  events: text('events').notNull(), // JSON array of event types
+  secret: varchar('secret', { length: 255 }),
+  active: integer('active').default(1).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+// Schedule requests table for tracking scheduling requests
+export const scheduleRequests = pgTable('schedule_requests', {
+  id: text('id').notNull().default(sql`gen_random_uuid()`).primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  pictureUrl: text('picture_url'),
+  phone: varchar('phone', { length: 50 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })

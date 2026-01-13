@@ -23,6 +23,10 @@ import schedulesRouter from './routes/schedules'
 import appointmentsRouter from './routes/appointments'
 import broadcastsRouter from './routes/broadcasts'
 import webhooksRouter from './routes/webhooks'
+import campaignsRouter from './routes/campaigns'
+import salesRouter from './routes/sales'
+import webhooksConfigRouter from './routes/webhooksConfig'
+import scheduleRequestsRouter from './routes/scheduleRequests'
 
 const PORT = process.env.PORT || 5006
 
@@ -74,7 +78,12 @@ app.use('/api/kanban', kanbanRouter)
 app.use('/api/schedules', schedulesRouter)
 app.use('/api/agendamento', appointmentsRouter)
 app.use('/api/broadcast-lists', broadcastsRouter)
+app.use('/api/broadcasts', broadcastsRouter)
 app.use('/api/webhook', webhooksRouter)
+app.use('/api/campaigns', campaignsRouter)
+app.use('/api/sales', salesRouter)
+app.use('/api/webhooks-config', webhooksConfigRouter)
+app.use('/api/schedule-requests', scheduleRequestsRouter)
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

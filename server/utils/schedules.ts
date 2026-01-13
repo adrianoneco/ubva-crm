@@ -76,11 +76,46 @@ export async function toggleScheduleAvailability(id: string) {
     throw new Error('Schedule not found')
   }
 
+  const newStatus = schedule.status === 'disponivel' ? 'indisponivel' : 'disponivel'
   const [updated] = await db
     .update(appointments)
-    .set({ status: schedule.status === 'disponivel' ? 'indisponivel' : 'disponivel' })
+    .set({ status: newStatus })
     .where(eq(appointments.id, id))
     .returning()
+
+  // Dispatch webhook on every status change
+  const webhookUrl = process.env.KB_WEBHOOK_URL
+  if (webhookUrl) {
+    ;(async () => {
+      try {
+        const payload = JSON.stringify({
+          event: newStatus === 'disponivel' ? 'schedule_available' : 'schedule_unavailable',
+          appointment: updated,
+          previousStatus: schedule.status,
+          newStatus: newStatus,
+          timestamp: new Date().toISOString(),
+        })
+
+        const secret = process.env.KB_WEBHOOK_SECRET
+        const headers: any = { 'Content-Type': 'application/json' }
+
+        if (secret) {
+          const crypto = await import('crypto')
+          const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex')
+          headers['X-Webhook-Signature'] = `sha256=${hmac}`
+        }
+
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers,
+          body: payload,
+        })
+        console.log(`[Schedule] Webhook sent for ${newStatus === 'disponivel' ? 'schedule_available' : 'schedule_unavailable'}:`, updated.id)
+      } catch (err) {
+        console.error('[Schedule] Webhook error:', err)
+      }
+    })()
+  }
 
   return updated
 }

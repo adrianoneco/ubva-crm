@@ -7,6 +7,9 @@ import AgendamentoPage from './pages/Agendamento'
 import Settings from './pages/Settings'
 import ContactsPage from './pages/Contacts'
 import Dashboard from './pages/Dashboard'
+import CRM from './pages/CRM'
+import Campaigns from './pages/Campaigns'
+import Sales from './pages/Sales'
 import MainLayout from './components/MainLayout'
 
 function App() {
@@ -22,6 +25,9 @@ function App() {
         <Route path="/agendamento" element={<AgendamentoPage />} />
         <Route path="/contacts" element={<ContactsPage />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/crm" element={<CRM />} />
+        <Route path="/campaigns" element={<Campaigns />} />
+        <Route path="/sales" element={<Sales />} />
       </Routes>
     </BrowserRouter>
   )

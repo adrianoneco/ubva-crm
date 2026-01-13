@@ -71,8 +71,10 @@ router.put('/:id', async (req, res) => {
             }
 
             const payload = JSON.stringify({
-              event: 'kanban.position_changed',
+              event: 'kanban_move',
               user: payloadUser,
+              previousStep: previous.kanbanStep,
+              newStep: user.kanbanStep,
               timestamp: new Date().toISOString(),
             })
 
