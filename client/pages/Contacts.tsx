@@ -36,6 +36,7 @@ export default function ContactsPage() {
   const [showModal, setShowModal] = useState(false)
   const [modalContact, setModalContact] = useState<Contact | null>(null)
   const [modalAvatarFile, setModalAvatarFile] = useState<File | null>(null)
+  const [triggerInstallBot, setTriggerInstallBot] = useState(false)
 
   useEffect(() => {
     fetchContacts()
@@ -48,10 +49,10 @@ export default function ContactsPage() {
     return data
   }
 
-  const openNewModal = () => { setModalContact(null); setModalAvatarFile(null); setShowModal(true) }
-  const openEditModal = (c: Contact) => { setModalContact(c); setModalAvatarFile(null); setShowModal(true) }
+  const openNewModal = () => { setModalContact(null); setModalAvatarFile(null); setTriggerInstallBot(false); setShowModal(true) }
+  const openEditModal = (c: Contact) => { setModalContact(c); setModalAvatarFile(null); setTriggerInstallBot(false); setShowModal(true) }
 
-  const handleModalCancel = () => { setShowModal(false); setModalContact(null); setModalAvatarFile(null) }
+  const handleModalCancel = () => { setShowModal(false); setModalContact(null); setModalAvatarFile(null); setTriggerInstallBot(false) }
 
   const handleModalSave = async (e: any) => {
     e.preventDefault()
@@ -62,6 +63,7 @@ export default function ContactsPage() {
       phone: form.phone.value || null,
       company: form.company.value || null,
       type: form.type.value || 'default',
+      triggerInstallBot: triggerInstallBot,
     }
 
     try {
@@ -82,6 +84,7 @@ export default function ContactsPage() {
     setShowModal(false)
     setModalContact(null)
     setModalAvatarFile(null)
+    setTriggerInstallBot(false)
     fetchContacts()
   }
 
@@ -472,6 +475,20 @@ export default function ContactsPage() {
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Empresa</label>
                   <input name="company" defaultValue={modalContact?.company || ''} placeholder="Nome da empresa" className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white text-sm" />
                 </div>
+                {!modalContact && (
+                  <div className="flex items-center gap-2 pt-2 pb-1">
+                    <input 
+                      type="checkbox" 
+                      id="triggerInstallBot" 
+                      checked={triggerInstallBot}
+                      onChange={(e) => setTriggerInstallBot(e.target.checked)}
+                      className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    />
+                    <label htmlFor="triggerInstallBot" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Acionar bot de instalação do APP
+                    </label>
+                  </div>
+                )}
                 <input type="hidden" name="type" value="default" />
                 <div className="flex justify-end gap-2 pt-2">
                   <button type="button" onClick={handleModalCancel} className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm">Cancelar</button>

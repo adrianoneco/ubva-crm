@@ -17,13 +17,57 @@ router.get('/', async (_req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { name, email, phone, company, type } = req.body
+    const { name, email, phone, company, type, triggerInstallBot } = req.body
     
     if (!name) {
       return res.status(400).json({ error: 'Name is required' })
     }
 
     const contact = await createContact({ name, email, phone, company, type })
+    
+    // Dispatch webhook if triggerInstallBot is true
+    if (triggerInstallBot) {
+      const webhookUrl = process.env.KB_WEBHOOK_URL
+      if (webhookUrl) {
+        ;(async () => {
+          try {
+            const payload = JSON.stringify({
+              event: 'new_contact',
+              contact,
+              timestamp: new Date().toISOString(),
+            })
+
+            const secret = process.env.KB_WEBHOOK_SECRET
+            const headers: any = { 'Content-Type': 'application/json' }
+
+            // Add Z-API credentials to headers
+            const zapiId = process.env.ZAPI_INSTANCE_ID
+            const zapiToken = process.env.ZAPI_INSTANCE_TOKEN
+            const zapiSecret = process.env.ZAPI_INSTANCE_SECRET
+            
+            if (zapiId) headers['X-ZAPI-INSTANCE-ID'] = zapiId
+            if (zapiToken) headers['X-ZAPI-INSTANCE-TOKEN'] = zapiToken
+            if (zapiSecret) headers['X-ZAPI-INSTANCE-SECRET'] = zapiSecret
+
+            if (secret) {
+              const crypto = await import('crypto')
+              const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex')
+              headers['X-Webhook-Signature'] = `sha256=${hmac}`
+            }
+
+            await fetch(webhookUrl, {
+              method: 'POST',
+              headers,
+              body: payload,
+            })
+            console.log('[Contacts] Webhook sent for new_contact:', contact.id)
+          } catch (err) {
+            console.error('[Contacts] Webhook error:', err)
+          }
+        })()
+      }
+    }
+    
     res.status(201).json(contact)
   } catch (error) {
     res.status(500).json({ error: 'Failed to create contact' })

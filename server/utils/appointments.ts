@@ -133,6 +133,15 @@ export async function toggleAvailabilityByDateTime(dateTime: Date | string) {
         const secret = process.env.KB_WEBHOOK_SECRET
         const headers: any = { 'Content-Type': 'application/json' }
 
+        // Add Z-API credentials to headers
+        const zapiId = process.env.ZAPI_INSTANCE_ID
+        const zapiToken = process.env.ZAPI_INSTANCE_TOKEN
+        const zapiSecret = process.env.ZAPI_INSTANCE_SECRET
+        
+        if (zapiId) headers['X-ZAPI-INSTANCE-ID'] = zapiId
+        if (zapiToken) headers['X-ZAPI-INSTANCE-TOKEN'] = zapiToken
+        if (zapiSecret) headers['X-ZAPI-INSTANCE-SECRET'] = zapiSecret
+
         if (secret) {
           const crypto = await import('crypto')
           const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex')
