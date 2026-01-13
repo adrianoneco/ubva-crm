@@ -111,13 +111,6 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
     
     const [hours, minutes] = timeSlot.split(':').map(v => parseInt(v))
     
-    // Construir data no timezone local (America/Sao_Paulo UTC-3)
-    const year = selectedDate.getFullYear()
-    const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
-    const day = String(selectedDate.getDate()).padStart(2, '0')
-    const hoursStr = String(hours).padStart(2, '0')
-    const minutesStr = String(minutes || 0).padStart(2, '0')
-    
     // Construir objeto Date local e enviar em UTC ISO (evita problemas de offset)
     const slotDate = new Date(selectedDate)
     slotDate.setHours(hours, minutes || 0, 0, 0)
@@ -236,6 +229,7 @@ export default function MeetingScheduler({ selectedContact }: { selectedContact?
       <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white capitalize">{monthName}</h3>
+          {loading && <div className="text-sm text-gray-500 dark:text-gray-400">Carregando...</div>}
           <div className="flex space-x-1">
             <button
               onClick={() => changeMonth(-1)}

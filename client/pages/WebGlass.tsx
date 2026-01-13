@@ -14,6 +14,8 @@ interface KanbanUser {
   createdAt: string
   agendamentoId?: string | null
   appointmentDateTime?: string | null
+  meet_link?: string | null
+  feedback?: string | null
 }
 
 const KANBAN_STEPS = [
@@ -33,6 +35,7 @@ export default function WebGlass() {
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingUser, setEditingUser] = useState<KanbanUser | null>(null)
+  const [openFeedbackId, setOpenFeedbackId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -337,18 +340,50 @@ export default function WebGlass() {
                                   </svg>
                                   <span className="font-medium">{time}</span>
                                   {user.meet_link && typeof user.meet_link === 'string' && user.meet_link.startsWith('https://meet.google.com/') && (
-                                    <a
-                                      href={user.meet_link}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="ml-2 inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded"
-                                      title="Abrir reunião Google Meet"
-                                    >
-                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M21.8 7.6c-.2-.4-.5-.8-.9-1-1.7-1-6.2-1.6-9.9-1.6S2.9 5.6 1.2 6.6c-.4.2-.7.6-.9 1-.2.4-.1.9.1 1.3l2.2 3.7c.3.5.8.8 1.4.8h11.2c.6 0 1.1-.3 1.4-.8l2.2-3.7c.3-.4.3-.9.1-1.3zM5.4 9.8c-.7 0-1.3-.6-1.3-1.3S4.7 7.2 5.4 7.2 6.7 7.8 6.7 8.5 6.1 9.8 5.4 9.8z" />
-                                      </svg>
-                                      Meet
-                                    </a>
+                                    <div className="ml-2 inline-flex items-center gap-1 relative">
+                                      <a
+                                        href={user.meet_link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded"
+                                        title="Abrir reunião Google Meet"
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+                                          <path d="M21.8 7.6c-.2-.4-.5-.8-.9-1-1.7-1-6.2-1.6-9.9-1.6S2.9 5.6 1.2 6.6c-.4.2-.7.6-.9 1-.2.4-.1.9.1 1.3l2.2 3.7c.3.5.8.8 1.4.8h11.2c.6 0 1.1-.3 1.4-.8l2.2-3.7c.3-.4.3-.9.1-1.3zM5.4 9.8c-.7 0-1.3-.6-1.3-1.3S4.7 7.2 5.4 7.2 6.7 7.8 6.7 8.5 6.1 9.8 5.4 9.8z" />
+                                        </svg>
+                                        Meet
+                                      </a>
+
+                                      {user.feedback && String(user.feedback).trim().length > 0 && (
+                                        <>
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); setOpenFeedbackId(openFeedbackId === user.id ? null : user.id) }}
+                                            className="ml-2 inline-flex items-center p-1 text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-900/20 rounded"
+                                            title="Ver feedback"
+                                          >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.84L3 20l1.16-4.25A7.72 7.72 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                            </svg>
+                                          </button>
+
+                                          {openFeedbackId === user.id && (
+                                            <div className="absolute right-0 z-50 bottom-full mb-3 w-64 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                                              <button
+                                                onClick={(e) => { e.stopPropagation(); setOpenFeedbackId(null) }}
+                                                aria-label="Fechar"
+                                                className="absolute top-1 right-1 p-1 rounded text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                                              >
+                                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                              </button>
+                                              <div className="absolute -bottom-2 right-4 w-3 h-3 bg-white dark:bg-gray-800 rotate-45 translate-x-1"></div>
+                                              <div className="pr-6">{String(user.feedback)}</div>
+                                            </div>
+                                          )}
+                                        </>
+                                      )}
+                                    </div>
                                   )}
                                 </div>
                               </div>

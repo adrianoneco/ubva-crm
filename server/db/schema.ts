@@ -14,15 +14,18 @@ export const users = pgTable('users', {
 export const webglassBot = pgTable('webglass_bot', {
   id: text('id').notNull().default(sql`gen_random_uuid()`).primaryKey(),
   phone: text('phone').notNull().unique(),
-  step: integer('step'),
+  step: text('step'),
   name: text('name'),
   email: text('email'),
   role: text('role'),
+  documento: text('documento'),
   lastMessageId: text('last_message_id'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   kanbanStep: integer('kanban_step').default(0),
   avatar: text('avatar'),
   agendamentoId: text('agendamento_id'),
+  feedback: text('feedback'),
+  nomeFantasia: text('nome_fantasia'),
 })
 
 // Appointments table for Agendamento (UUID primary key)

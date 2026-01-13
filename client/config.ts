@@ -4,10 +4,10 @@ export const getApiUrl = (): string => {
   const protocol = window.location.protocol
   const hostname = window.location.hostname
   
-  // In development, backend runs on port 3001
+  // In development, backend runs on port 5006
   // In production, same origin is used
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return `${protocol}//${hostname}:3001`
+    return `${protocol}//${hostname}:5006`
   }
   
   // For IP addresses or domains, use the same origin

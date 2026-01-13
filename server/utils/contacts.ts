@@ -88,7 +88,7 @@ export async function updateContact(id: string, data: Partial<ContactData>) {
 
 export async function deleteContact(id: string) {
   await db.delete(contacts).where(eq(contacts.id, id))
-  const dir = path.join(DATA_DIR, contact.type || 'default')
+  const dir = path.join(DATA_DIR, 'default')
   await fs.unlink(path.join(dir, `${id}.json`)).catch(() => {})
   await fs.unlink(path.join(dir, `${id}-avatar.png`)).catch(() => {})
 }

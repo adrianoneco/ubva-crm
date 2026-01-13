@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import MainLayout from '../components/MainLayout'
 import * as Papa from 'papaparse'
-import { extrairTelefones, formatarTelefonesParaPreview, telefonesParaJSON } from '../utils/phoneExtractor'
+import { extrairTelefones, formatarTelefonesParaPreview } from '../utils/phoneExtractor'
 
 
 interface Contact {

@@ -21,8 +21,9 @@ import kanbanRouter from './routes/kanban'
 import schedulesRouter from './routes/schedules'
 import appointmentsRouter from './routes/appointments'
 import broadcastsRouter from './routes/broadcasts'
+import webhooksRouter from './routes/webhooks'
 
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT || 5006
 
 // Middleware
 app.use(cors({
@@ -58,6 +59,7 @@ app.use('/api/kanban', kanbanRouter)
 app.use('/api/schedules', schedulesRouter)
 app.use('/api/agendamento', appointmentsRouter)
 app.use('/api/broadcast-lists', broadcastsRouter)
+app.use('/api/webhook', webhooksRouter)
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

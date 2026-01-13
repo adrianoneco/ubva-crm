@@ -38,11 +38,66 @@ router.put('/:id', async (req, res) => {
     const id = req.params.id
     const { name, avatar, phone, email, role, kanbanStep } = req.body
 
+    // Load previous user to check whether kanbanStep actually changed
+    let previous: any = null
+    try {
+      const all = await getKanbanUsers()
+      previous = all.find((u: any) => u.id === id)
+    } catch (e) {
+      // ignore
+    }
+
     const user = await updateKanbanUser(id, { name, avatar, phone, email, role, kanbanStep })
     // Emit socket event to notify all clients
     console.log('[Kanban] Broadcasting update to', io.engine.clientsCount, 'connected clients')
     io.emit('kanban-update')
     console.log('[Kanban] Updated user', id, ', event emitted')
+
+    const moved = previous && previous.kanbanStep !== user.kanbanStep
+    // Only fire webhook when the item was moved between columns (kanbanStep changed)
+    if (moved) {
+      const webhookUrl = process.env.KB_WEBHOOK_URL
+      if (webhookUrl) {
+        ;(async () => {
+          try {
+            // Get the full user record (including joined appointment data) to send
+            let payloadUser: any = user
+            try {
+              const all = await getKanbanUsers()
+              const found = all.find((u: any) => u.id === user.id)
+              if (found) payloadUser = found
+            } catch (e) {
+              // fallback to partial `user`
+            }
+
+            const payload = JSON.stringify({
+              event: 'kanban.position_changed',
+              user: payloadUser,
+              timestamp: new Date().toISOString(),
+            })
+
+            // If secret provided, compute HMAC-SHA256 and add X-Webhook-Signature header
+            const secret = process.env.KB_WEBHOOK_SECRET
+            const headers: any = { 'Content-Type': 'application/json' }
+            if (secret) {
+              const crypto = await import('crypto')
+              const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex')
+              headers['X-Webhook-Signature'] = `sha256=${hmac}`
+            }
+
+            await fetch(webhookUrl, {
+              method: 'POST',
+              headers,
+              body: payload,
+            })
+            console.log('[Kanban] Webhook sent to', webhookUrl)
+          } catch (err) {
+            console.error('[Kanban] Webhook error:', err)
+          }
+        })()
+      }
+    }
+
     res.json(user)
   } catch (error) {
     console.error('Update kanban user error:', error)

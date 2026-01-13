@@ -5,6 +5,7 @@ interface KanbanColumnProps {
   id: string
   title: string
   users: any[]
+  onDeleteUser?: (id: string) => void
   colorPalette?: { header: string; badge: string; colorClass?: string }
   onSelect?: (user: any) => void
 }

@@ -40,8 +40,9 @@ router.post('/', async (req, res) => {
     console.log('[Appointments] Created appointment, broadcasting update')
     res.status(201).json(row)
   } catch (err) {
-    console.error('Create appointment error:', err)
-    if (err && (err.code === 'TIME_SLOT_BOOKED' || err.message === 'TIME_SLOT_BOOKED')) {
+    const e: any = err
+    console.error('Create appointment error:', e)
+    if (e && (e.code === 'TIME_SLOT_BOOKED' || e.message === 'TIME_SLOT_BOOKED')) {
       return res.status(409).json({ error: 'Time slot already booked' })
     }
     res.status(500).json({ error: 'Failed to create appointment' })
@@ -71,9 +72,10 @@ router.post('/toggle-availability', async (req, res) => {
     console.log('[Appointments] Toggled availability, broadcasting update')
     res.json(toggled)
   } catch (err) {
-    console.error('Toggle appointment availability error:', err)
+    const e: any = err
+    console.error('Toggle appointment availability error:', e)
     // If the toggle failed because the slot is booked, return 409 Conflict
-    if (err && (err.code === 'TIME_SLOT_BOOKED' || err.message === 'TIME_SLOT_BOOKED')) {
+    if (e && (e.code === 'TIME_SLOT_BOOKED' || e.message === 'TIME_SLOT_BOOKED')) {
       return res.status(409).json({ error: 'Time slot already booked' })
     }
     res.status(500).json({ error: 'Failed to toggle appointment availability' })
