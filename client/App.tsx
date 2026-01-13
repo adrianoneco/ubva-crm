@@ -6,6 +6,8 @@ import WebGlass from './pages/WebGlass'
 import AgendamentoPage from './pages/Agendamento'
 import Settings from './pages/Settings'
 import ContactsPage from './pages/Contacts'
+import Dashboard from './pages/Dashboard'
+import MainLayout from './components/MainLayout'
 
 function App() {
   return (
@@ -15,6 +17,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/recover" element={<Recover />} />
+        <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
         <Route path="/webglass" element={<WebGlass />} />
         <Route path="/agendamento" element={<AgendamentoPage />} />
         <Route path="/contacts" element={<ContactsPage />} />
