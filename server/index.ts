@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import express from 'express'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
@@ -24,6 +25,20 @@ import broadcastsRouter from './routes/broadcasts'
 import webhooksRouter from './routes/webhooks'
 
 const PORT = process.env.PORT || 5006
+
+// Mask helper for logs
+const mask = (s?: string) => {
+  if (!s) return undefined
+  if (s.length <= 8) return '********'
+  return `${s.slice(0, 4)}...${s.slice(-4)}`
+}
+
+// Log presence of Z-API env vars (masked) to aid debugging
+console.log('[Startup] Z-API env:', {
+  ZAPI_INSTANCE_ID: mask(process.env.ZAPI_INSTANCE_ID),
+  ZAPI_INSTANCE_TOKEN: mask(process.env.ZAPI_INSTANCE_TOKEN),
+  ZAPI_INSTANCE_SECRET: mask(process.env.ZAPI_INSTANCE_SECRET),
+})
 
 // Middleware
 app.use(cors({

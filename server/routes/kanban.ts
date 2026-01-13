@@ -79,11 +79,50 @@ router.put('/:id', async (req, res) => {
             // If secret provided, compute HMAC-SHA256 and add X-Webhook-Signature header
             const secret = process.env.KB_WEBHOOK_SECRET
             const headers: any = { 'Content-Type': 'application/json' }
+
+            // Add Z-API credentials from environment to webhook headers (if present)
+            let zapiId = process.env.ZAPI_INSTANCE_ID
+            let zapiToken = process.env.ZAPI_INSTANCE_TOKEN
+            let zapiSecret = process.env.ZAPI_INSTANCE_SECRET
+
+            // Fallback: if any Z-API var is missing, try to load .env directly
+            if (!zapiId || !zapiToken || !zapiSecret) {
+              try {
+                const dotenv = await import('dotenv')
+                const path = await import('path')
+                const res = dotenv.config({ path: path.resolve(process.cwd(), '.env') })
+                const parsed = res.parsed || {}
+                zapiId = zapiId || parsed.ZAPI_INSTANCE_ID || process.env.ZAPI_INSTANCE_ID
+                zapiToken = zapiToken || parsed.ZAPI_INSTANCE_TOKEN || process.env.ZAPI_INSTANCE_TOKEN
+                zapiSecret = zapiSecret || parsed.ZAPI_INSTANCE_SECRET || process.env.ZAPI_INSTANCE_SECRET
+              } catch (e) {
+                // ignore
+              }
+            }
+            if (zapiId) headers['X-ZAPI-INSTANCE-ID'] = zapiId
+            if (zapiToken) headers['X-ZAPI-INSTANCE-TOKEN'] = zapiToken
+            if (zapiSecret) headers['X-ZAPI-INSTANCE-SECRET'] = zapiSecret
+
             if (secret) {
               const crypto = await import('crypto')
               const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex')
               headers['X-Webhook-Signature'] = `sha256=${hmac}`
             }
+
+            // Mask secret values for safe logging (show only start/end)
+            const mask = (s?: string) => {
+              if (!s) return undefined
+              if (s.length <= 8) return '********'
+              return `${s.slice(0, 4)}...${s.slice(-4)}`
+            }
+            const loggedHeaders: any = { ...headers }
+            if (loggedHeaders['X-ZAPI-INSTANCE-SECRET']) {
+              loggedHeaders['X-ZAPI-INSTANCE-SECRET'] = mask(loggedHeaders['X-ZAPI-INSTANCE-SECRET'])
+            }
+            if (loggedHeaders['X-Webhook-Signature']) {
+              loggedHeaders['X-Webhook-Signature'] = mask(loggedHeaders['X-Webhook-Signature'])
+            }
+            console.log('[Kanban] Webhook headers (masked):', loggedHeaders)
 
             await fetch(webhookUrl, {
               method: 'POST',
