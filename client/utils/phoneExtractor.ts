@@ -121,3 +121,42 @@ export function telefonesParaJSON(telefones: Telefones): string {
   const comCodigoPais = adicionarCodigoPais(telefones);
   return JSON.stringify(comCodigoPais);
 }
+
+// Validar telefones extraídos de uma string e retornar tags válidas e inválidas
+export function validarETags(input: string): { valid: string[]; invalid: string[] } {
+  const telefones = extrairTelefones(input)
+  const valid: string[] = []
+  const invalid: string[] = []
+
+  // percorre todos os tipos e valores
+  for (const valor of Object.values(telefones)) {
+    const lista = Array.isArray(valor) ? valor : [valor]
+    for (const v of lista) {
+      const digitosRaw = (v || '').toString().replace(/\D/g, '')
+
+      // remover prefixo de país se existir (55)
+      const digitos = digitosRaw.startsWith('55') ? digitosRaw.slice(2) : digitosRaw
+
+      // aceitar apenas 10 (DD+8) ou 11 (DD+9) dígitos
+      if (digitos.length === 10 || digitos.length === 11) {
+        // formatar para padrão (XX) XXXX-XXXX ou (XX) XXXXX-XXXX
+        const formatted = digitos.length === 10
+          ? `(${digitos.slice(0,2)}) ${digitos.slice(2,6)}-${digitos.slice(6)}`
+          : `(${digitos.slice(0,2)}) ${digitos.slice(2,7)}-${digitos.slice(7)}`
+
+        // validar formato exato: (00) 0000-0000 ou (00) 00000-0000
+        const re = /^\(\d{2}\) \d{4}-\d{4}$|^\(\d{2}\) \d{5}-\d{4}$/
+        if (re.test(formatted)) {
+          valid.push(formatted)
+        } else {
+          invalid.push(v as string)
+        }
+      } else {
+        // considerar inválido se não tiver 10/11 dígitos
+        invalid.push(v as string)
+      }
+    }
+  }
+
+  return { valid, invalid }
+}

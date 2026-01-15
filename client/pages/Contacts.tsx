@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import MainLayout from '../components/MainLayout'
 import * as Papa from 'papaparse'
-import { extrairTelefones, formatarTelefonesParaPreview } from '../utils/phoneExtractor'
+import { validarETags } from '../utils/phoneExtractor'
 
 
 interface Contact {
@@ -37,6 +37,8 @@ export default function ContactsPage() {
   const [modalContact, setModalContact] = useState<Contact | null>(null)
   const [modalAvatarFile, setModalAvatarFile] = useState<File | null>(null)
   const [triggerInstallBot, setTriggerInstallBot] = useState(false)
+  const [invalidRows, setInvalidRows] = useState<any[]>([])
+  const [showInvalidsTab, setShowInvalidsTab] = useState(false)
 
   useEffect(() => {
     fetchContacts()
@@ -360,18 +362,87 @@ export default function ContactsPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {parsedRows.slice(0, 5).map((r, idx) => (
-                              <tr key={idx} className="border-b border-gray-200 dark:border-gray-700">
-                                <td className="px-4 py-2 text-gray-900 dark:text-gray-300 text-xs">{mapping.name ? r[mapping.name] : '—'}</td>
-                                <td className="px-4 py-2 text-gray-600 dark:text-gray-400 text-xs">{mapping.email ? r[mapping.email] : '—'}</td>
-                                <td className="px-4 py-2 text-gray-600 dark:text-gray-400 text-xs">{mapping.phone ? r[mapping.phone] : '—'}</td>
-                                <td className="px-4 py-2 text-gray-600 dark:text-gray-400 text-xs">{mapping.company ? r[mapping.company] : '—'}</td>
-                              </tr>
-                            ))}
+                            {parsedRows.slice(0, 5).map((r, idx) => {
+                              // compute phone tags and validation
+                              const rawPhone = mapping.phone ? r[mapping.phone] : ''
+                              const { valid, invalid } = validarETags(rawPhone || '')
+                              return (
+                                <tr key={idx} className="border-b border-gray-200 dark:border-gray-700">
+                                  <td className="px-4 py-2 text-gray-900 dark:text-gray-300 text-xs">{mapping.name ? r[mapping.name] : '—'}</td>
+                                  <td className="px-4 py-2 text-gray-600 dark:text-gray-400 text-xs">{mapping.email ? r[mapping.email] : '—'}</td>
+                                  <td className="px-4 py-2 text-gray-600 dark:text-gray-400 text-xs">
+                                    {valid.length > 0 ? valid.join(', ') : (rawPhone || '—')}
+                                    {invalid.length > 0 && (
+                                      <div className="text-amber-500 text-xxs mt-1">Inválido: {invalid.join('; ')}</div>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-2 text-gray-600 dark:text-gray-400 text-xs">{mapping.company ? r[mapping.company] : '—'}</td>
+                                </tr>
+                              )
+                            })}
                           </tbody>
                         </table>
                       </div>
                     </div>
+                  </div>
+                )}
+                
+                {/* Invalids tab */}
+                {parsedRows.length > 0 && (
+                  <div className="p-6 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex gap-3 mb-4">
+                      <button onClick={() => setShowInvalidsTab(false)} className={`px-3 py-1 rounded ${!showInvalidsTab ? 'bg-primary-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700'}`}>Preview</button>
+                      <button onClick={() => {
+                        // build invalid rows list
+                        const inv: any[] = []
+                        parsedRows.forEach((r, idx) => {
+                          const rawPhone = mapping.phone ? r[mapping.phone] : ''
+                          const { valid, invalid } = validarETags(rawPhone || '')
+                          if (invalid.length > 0) {
+                            inv.push({ idx, original: rawPhone, edit: rawPhone, valid, invalid })
+                          }
+                        })
+                        setInvalidRows(inv)
+                        setShowInvalidsTab(true)
+                      }} className={`px-3 py-1 rounded ${showInvalidsTab ? 'bg-primary-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700'}`}>Editar telefones inválidos ({parsedRows.reduce((acc, r) => {
+                        const raw = mapping.phone ? r[mapping.phone] : ''
+                        const { invalid } = validarETags(raw || '')
+                        return acc + (invalid.length > 0 ? 1 : 0)
+                      }, 0)})</button>
+                    </div>
+
+                    {showInvalidsTab ? (
+                      <div>
+                        {invalidRows.length === 0 ? (
+                          <div className="text-sm text-gray-500">Nenhum telefone inválido encontrado.</div>
+                        ) : (
+                          <div className="space-y-2">
+                            {invalidRows.map((ir, i) => (
+                              <div key={i} className="flex items-start gap-2">
+                                <div className="w-8 text-xs text-gray-600">#{ir.idx + 1}</div>
+                                <input value={ir.edit} onChange={(e) => {
+                                  const copy = [...invalidRows]
+                                  copy[i] = { ...copy[i], edit: e.target.value }
+                                  setInvalidRows(copy)
+                                }} className="flex-1 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-sm" />
+                                <button onClick={() => {
+                                  // re-validate this row
+                                  const copy = [...invalidRows]
+                                  const { valid, invalid } = validarETags(copy[i].edit || '')
+                                  copy[i] = { ...copy[i], valid, invalid }
+                                  setInvalidRows(copy)
+                                  // if became valid, remove from list
+                                  if (valid.length > 0) {
+                                    const filtered = copy.filter(x => x.valid.length === 0)
+                                    setInvalidRows(filtered)
+                                  }
+                                }} className="px-3 py-1 rounded bg-emerald-500 text-white text-sm">Revalidar</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                 )}
               </div>
@@ -398,23 +469,47 @@ export default function ContactsPage() {
                   </button>
                   <button 
                     onClick={async () => {
-                      const contactsToImport = parsedRows.map(r => ({
-                        name: mapping.name ? r[mapping.name] : undefined,
-                        email: mapping.email ? r[mapping.email] : undefined,
-                        phone: mapping.phone ? r[mapping.phone] : undefined,
-                        company: mapping.company ? r[mapping.company] : undefined,
-                        type: 'default'
-                      })).filter(x => x.name)
+                      // validate all rows first
+                      const invalids: any[] = []
+                      const validContacts: any[] = []
+
+                      parsedRows.forEach((r, idx) => {
+                        const name = mapping.name ? r[mapping.name] : undefined
+                        const email = mapping.email ? r[mapping.email] : undefined
+                        const rawPhone = mapping.phone ? r[mapping.phone] : ''
+                        const company = mapping.company ? r[mapping.company] : undefined
+
+                        const { valid, invalid } = validarETags(rawPhone || '')
+                        if (invalid.length > 0) {
+                          invalids.push({ idx, original: rawPhone, valid, invalid, row: r })
+                        }
+
+                        if (name && valid.length > 0) {
+                          validContacts.push({ name, email: email || null, phone: valid.join(', '), company: company || null, type: 'default' })
+                        }
+                      })
+
+                      if (invalids.length > 0) {
+                        setInvalidRows(invalids)
+                        setShowInvalidsTab(true)
+                        alert(`Existem ${invalids.length} linha(s) com telefones inválidos. Corrija-as na aba 'Editar telefones inválidos' antes de importar.`)
+                        return
+                      }
+
+                      if (validContacts.length === 0) {
+                        alert('Nenhum contato válido para importar (verifique nomes e telefones).')
+                        return
+                      }
 
                       setImporting(true)
-                      setImportTotal(contactsToImport.length)
+                      setImportTotal(validContacts.length)
                       setImportProgress(0)
 
                       let imported = 0
                       try {
                         const batchSize = 100
-                        for (let i = 0; i < contactsToImport.length; i += batchSize) {
-                          const batch = contactsToImport.slice(i, i + batchSize)
+                        for (let i = 0; i < validContacts.length; i += batchSize) {
+                          const batch = validContacts.slice(i, i + batchSize)
                           const res = await fetch('/api/contacts/import', { 
                             method: 'POST', 
                             headers: { 'Content-Type': 'application/json' }, 
@@ -422,7 +517,7 @@ export default function ContactsPage() {
                           })
                           if (res.ok) {
                             const data = await res.json()
-                            imported += data.count || 0
+                            imported += data.count || batch.length
                             setImportProgress(imported)
                           }
                         }
