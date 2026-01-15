@@ -1,4 +1,4 @@
-import { pgTable, varchar, timestamp, integer, text } from 'drizzle-orm/pg-core'
+import { pgTable, varchar, timestamp, integer, text, boolean } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
 // Authentication users table
@@ -27,6 +27,7 @@ export const webglassBot = pgTable('webglass_bot', {
   agendamentoId: text('agendamento_id'),
   feedback: text('feedback'),
   nomeFantasia: text('nome_fantasia'),
+  isDone: boolean('is_done').default(false).notNull(),
 })
 
 // Appointments table for Agendamento (UUID primary key)

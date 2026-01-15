@@ -8,7 +8,7 @@
     "build": "tsc && vite build",
     "kill-port": "npx kill-port 5006 5005",
     "preview": "vite preview",
-    "client": "vite",
+    "client": "vite --host",
     "server": "tsx server/index.ts",
     "server:watch": "tsx watch server/index.ts",
     "db:generate": "drizzle-kit generate",

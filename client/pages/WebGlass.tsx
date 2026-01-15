@@ -21,7 +21,7 @@ const KANBAN_STEPS = [
   { id: 0, name: 'Inicio', color: 'bg-gray-500' },
   { id: 1, name: 'Cadastro', color: 'bg-blue-500' },
   { id: 2, name: 'Agendamento', color: 'bg-indigo-500' },
-  { id: 3, name: 'Instalação', color: 'bg-purple-500' },
+  { id: 3, name: 'Validado', color: 'bg-purple-500' },
   { id: 4, name: 'Treinamento', color: 'bg-yellow-500' },
   { id: 5, name: 'Fazer Teste', color: 'bg-orange-500' },
   { id: 6, name: 'Feedback', color: 'bg-pink-500' },
