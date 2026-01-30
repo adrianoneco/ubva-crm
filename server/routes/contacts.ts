@@ -1,4 +1,4 @@
-import { Router, Request } from 'express'
+import { Router, Request, Response } from 'express'
 // @ts-ignore
 import multer from 'multer'
 import { getContacts, createContact, updateContact, deleteContact, saveAvatar } from '../utils/contacts'
@@ -17,13 +17,13 @@ router.get('/', async (_req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { name, email, phone, company, type, triggerInstallBot } = req.body
+    const { name, email, phone, company, type, triggerInstallBot, profilePictureUrl } = req.body
     
     if (!name) {
       return res.status(400).json({ error: 'Name is required' })
     }
 
-    const contact = await createContact({ name, email, phone, company, type })
+    const contact = await createContact({ name, email, phone, company, type, profilePictureUrl })
     
     // Dispatch webhook if triggerInstallBot is true
     if (triggerInstallBot) {
@@ -77,9 +77,9 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const id = req.params.id
-    const { name, email, phone, company, type } = req.body
+    const { name, email, phone, company, type, profilePictureUrl } = req.body
 
-    const contact = await updateContact(id, { name, email, phone, company, type })
+    const contact = await updateContact(id, { name, email, phone, company, type, profilePictureUrl })
     res.json(contact)
   } catch (error) {
     res.status(500).json({ error: 'Failed to update contact' })
@@ -88,7 +88,7 @@ router.put('/:id', async (req, res) => {
 
 router.post('/:id/avatar', upload.single('avatar'), async (req: Request, res) => {
   try {
-    const id = req.params.id
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
     const type = req.body.type || 'default'
     const file = (req as any).file as any
     if (!file) return res.status(400).json({ error: 'No file' })
@@ -190,6 +190,57 @@ router.delete('/:id', async (req, res) => {
     res.status(204).send()
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete contact' })
+  }
+})
+
+// Fetch WhatsApp profile picture via Z-API
+router.post('/whatsapp-profile', async (req: Request, res: Response) => {
+  try {
+    const { phone } = req.body
+    
+    if (!phone) {
+      return res.status(400).json({ error: 'Phone number is required' })
+    }
+
+    const zapiInstanceId = process.env.ZAPI_INSTANCE_ID
+    const zapiInstanceToken = process.env.ZAPI_INSTANCE_TOKEN
+    const zapiInstanceSecret = process.env.ZAPI_INSTANCE_SECRET
+
+    if (!zapiInstanceId || !zapiInstanceToken || !zapiInstanceSecret) {
+      return res.status(500).json({ error: 'Z-API credentials not configured' })
+    }
+
+    // Call Z-API to get contact profile
+    const zapiUrl = `https://api.z-api.io/instances/${zapiInstanceId}/contacts/${phone}`
+    
+    const zapiResponse = await fetch(zapiUrl, {
+      method: 'GET',
+      headers: {
+        'Client-Token': zapiInstanceToken,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (!zapiResponse.ok) {
+      console.error(`Z-API error: ${zapiResponse.status} ${zapiResponse.statusText}`)
+      return res.status(400).json({ error: 'Failed to fetch contact from Z-API' })
+    }
+
+    const zapiData = await zapiResponse.json()
+    
+    // Extract profile picture URL if available
+    const profilePictureUrl = zapiData.picture || zapiData.profilePicture || null
+    const contactName = zapiData.name || null
+
+    res.json({
+      phone,
+      profile_picture_url: profilePictureUrl,
+      name: contactName,
+      status: 'success'
+    })
+  } catch (error) {
+    console.error('WhatsApp profile fetch error:', error)
+    res.status(500).json({ error: 'Failed to fetch WhatsApp profile' })
   }
 })
 

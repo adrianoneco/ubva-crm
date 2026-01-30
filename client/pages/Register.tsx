@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getApiUrl } from '../config'
+import AuthLayout from '../components/AuthLayout'
 
 export default function Register() {
   const [name, setName] = useState('')
@@ -53,7 +54,7 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center px-4 py-8">
+    <AuthLayout>
       <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8 w-full max-w-md border border-gray-200 dark:border-gray-700">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
@@ -166,6 +167,6 @@ export default function Register() {
           </span>
         </div>
       </div>
-    </div>
+    </AuthLayout>
   )
 }

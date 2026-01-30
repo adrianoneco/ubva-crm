@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
 import MainLayout from '../components/MainLayout'
+import { usePermissions } from '../hooks/usePermissions'
 
 interface KanbanUser {
   id: string
@@ -29,6 +30,7 @@ const KANBAN_STEPS = [
 ]
 
 export default function WebGlass() {
+  const { canEdit, canDelete } = usePermissions()
   const [users, setUsers] = useState<KanbanUser[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -192,7 +194,7 @@ export default function WebGlass() {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 overflow-x-hidden max-w-full">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Pipeline</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
@@ -202,14 +204,11 @@ export default function WebGlass() {
 
         {/* Kanban Board */}
             {/* Kanban Board with Horizontal Scroll */}
-            <div className="relative" style={{ height: 'calc(100vh - 280px)' }}>
+            <div className="relative overflow-hidden" style={{ height: 'calc(100vh - 280px)', margin: '0 -16px' }}>
               <div 
-                className="flex gap-4 h-full overflow-x-auto overflow-y-hidden" 
+                className="flex gap-4 h-full overflow-x-auto overflow-y-hidden px-4 pb-4" 
                 style={{ 
-                  maxHeight: 'calc(100vh - 280px)',
-                  paddingLeft: '16px',
-                  paddingRight: '16px',
-                  paddingBottom: '16px'
+                  maxHeight: 'calc(100vh - 280px)'
                 }}
               >
               {KANBAN_STEPS.map(step => (
@@ -357,24 +356,28 @@ export default function WebGlass() {
                       </div>
 
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => openEditModal(user)}
-                          className="p-1 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded"
-                          title="Editar"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
-                          title="Excluir"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+                        {canEdit('leads') && (
+                          <button
+                            onClick={() => openEditModal(user)}
+                            className="p-1 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded"
+                            title="Editar"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                        )}
+                        {canDelete('leads') && (
+                          <button
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
+                            title="Excluir"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     </div>
 

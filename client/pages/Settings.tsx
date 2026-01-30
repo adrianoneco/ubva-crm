@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import MainLayout from '../components/MainLayout'
+import { useNavigate, useParams } from 'react-router-dom'
 import { API_URL } from '../config'
+import ToggleSwitch from '../components/ToggleSwitch'
 
-type SettingsTab = 'geral' | 'kanban' | 'webhooks' | 'usuarios' | 'api'
+type SettingsPage = 'geral' | 'kanban' | 'webhooks' | 'usuarios' | 'grupos' | 'api'
 
 interface WebhookEvent {
   id: string
@@ -25,11 +26,32 @@ interface User {
   name: string
   email: string
   role: string
+  phone?: string
+  phoneCountry?: string
+  avatar?: string
   createdAt: string
 }
 
+interface Group {
+  id: string
+  name: string
+  description?: string
+  createdAt: string
+  permissions?: Permission[]
+}
+
+interface Permission {
+  id: string
+  key: string
+  name: string
+  category: string
+  enabled?: boolean
+}
+
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('geral')
+  const navigate = useNavigate()
+  const { page } = useParams<{ page?: SettingsPage }>()
+  const activeTab = (page || 'geral') as SettingsPage
 
   // ==================== GERAL ====================
   const [timezone, setTimezone] = useState<string>(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC')
@@ -83,9 +105,28 @@ export default function Settings() {
     name: '',
     email: '',
     password: '',
-    role: 'user'
+    role: 'user',
+    phone: '',
+    phoneCountry: 'BR',
+    avatar: ''
   })
   const [userFormError, setUserFormError] = useState('')
+  const [fetchWhatsAppProfile, setFetchWhatsAppProfile] = useState(false)
+  const [loadingProfile, setLoadingProfile] = useState(false)
+  const [_previewAvatar, setPreviewAvatar] = useState<string | null>(null)
+
+  // ==================== GRUPOS ====================
+  const [groupsList, setGroupsList] = useState<Group[]>([])
+  const [groupsLoading, setGroupsLoading] = useState(false)
+  const [groupModalOpen, setGroupModalOpen] = useState(false)
+  const [editingGroup, setEditingGroup] = useState<Group | null>(null)
+  const [groupForm, setGroupForm] = useState({
+    name: '',
+    description: ''
+  })
+  const [groupFormError, setGroupFormError] = useState('')
+  const [allPermissions, setAllPermissions] = useState<Record<string, Permission[]>>({})
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([])
 
   const [savedOk, setSavedOk] = useState(false)
   const [copySuccess, setCopySuccess] = useState('')
@@ -120,6 +161,9 @@ export default function Settings() {
     } else {
       setApiKey(generateApiKey())
     }
+
+    // Load permissions on mount
+    fetchPermissions()
   }, [])
 
   const generateApiKey = () => {
@@ -204,6 +248,9 @@ export default function Settings() {
   useEffect(() => {
     if (activeTab === 'usuarios') {
       fetchUsers()
+    } else if (activeTab === 'grupos') {
+      fetchGroups()
+      fetchPermissions()
     }
   }, [activeTab])
 
@@ -215,7 +262,10 @@ export default function Settings() {
         name: user.name,
         email: user.email,
         password: '',
-        role: user.role
+        role: user.role,
+        phone: (user as any).phone || '',
+        phoneCountry: (user as any).phoneCountry || 'BR',
+        avatar: (user as any).avatar || ''
       })
     } else {
       setEditingUser(null)
@@ -223,7 +273,10 @@ export default function Settings() {
         name: '',
         email: '',
         password: '',
-        role: 'user'
+        role: 'user',
+        phone: '',
+        phoneCountry: 'BR',
+        avatar: ''
       })
     }
     setUserModalOpen(true)
@@ -243,11 +296,42 @@ export default function Settings() {
     }
 
     try {
+      let avatarUrl = userForm.avatar || null
+      
+      // Fetch WhatsApp profile picture if enabled
+      if (fetchWhatsAppProfile && userForm.phone) {
+        setLoadingProfile(true)
+        try {
+          const phoneDigits = userForm.phone.replace(/\D/g, '')
+          const countryCode = userForm.phoneCountry === 'BR' ? '55' : 
+                             userForm.phoneCountry === 'US' ? '1' :
+                             userForm.phoneCountry === 'AR' ? '54' :
+                             userForm.phoneCountry === 'MX' ? '52' : '55'
+          const fullPhone = `${countryCode}${phoneDigits}`
+          
+          const profileRes = await fetch(`${API_URL}/api/contacts/whatsapp-profile?phone=${fullPhone}`)
+          if (profileRes.ok) {
+            const profileData = await profileRes.json()
+            if (profileData.imageUrl) {
+              avatarUrl = profileData.imageUrl
+              setPreviewAvatar(profileData.imageUrl)
+            }
+          }
+        } catch (profileError) {
+          console.error('Failed to fetch WhatsApp profile:', profileError)
+        } finally {
+          setLoadingProfile(false)
+        }
+      }
+
       if (editingUser) {
         const updateData: any = {
           name: userForm.name,
           email: userForm.email,
-          role: userForm.role
+          role: userForm.role,
+          phone: userForm.phone || null,
+          phoneCountry: userForm.phoneCountry || 'BR',
+          avatar: avatarUrl
         }
         if (userForm.password) {
           updateData.password = userForm.password
@@ -264,13 +348,20 @@ export default function Settings() {
         const res = await fetch(`${API_URL}/api/users`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(userForm)
+          body: JSON.stringify({
+            ...userForm,
+            phone: userForm.phone || null,
+            phoneCountry: userForm.phoneCountry || 'BR',
+            avatar: avatarUrl
+          })
         })
         
         if (!res.ok) throw new Error('Failed to create user')
       }
       
       setUserModalOpen(false)
+      setFetchWhatsAppProfile(false)
+      setPreviewAvatar(null)
       fetchUsers()
     } catch (error) {
       setUserFormError('Erro ao salvar usuário. Verifique se o email já está em uso.')
@@ -291,6 +382,153 @@ export default function Settings() {
     } catch (error) {
       console.error('Failed to delete user:', error)
     }
+  }
+
+  // ==================== GROUP MANAGEMENT ====================
+  const fetchGroups = async () => {
+    setGroupsLoading(true)
+    try {
+      const res = await fetch(`${API_URL}/api/permissions/groups`)
+      if (!res.ok) throw new Error('Failed to fetch')
+      const data = await res.json()
+      setGroupsList(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Failed to fetch groups:', error)
+      setGroupsList([])
+    } finally {
+      setGroupsLoading(false)
+    }
+  }
+
+  const fetchPermissions = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/permissions/permissions`)
+      const data = await res.json()
+      setAllPermissions(data)
+    } catch (error) {
+      console.error('Failed to fetch permissions:', error)
+    }
+  }
+
+  const openGroupModal = async (group?: Group) => {
+    setGroupFormError('')
+    
+    // Ensure permissions are loaded
+    if (Object.keys(allPermissions).length === 0) {
+      await fetchPermissions()
+    }
+    
+    if (group) {
+      setEditingGroup(group)
+      setGroupForm({
+        name: group.name,
+        description: group.description || ''
+      })
+      
+      // Fetch the group with its permissions
+      try {
+        const res = await fetch(`${API_URL}/api/permissions/groups/${group.id}`)
+        if (res.ok) {
+          const groupWithPerms = await res.json()
+          setSelectedPermissions(groupWithPerms.permissions?.filter((p: any) => p.enabled).map((p: any) => p.id) || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch group permissions:', error)
+      }
+    } else {
+      setEditingGroup(null)
+      setGroupForm({
+        name: '',
+        description: ''
+      })
+      setSelectedPermissions([])
+    }
+    setGroupModalOpen(true)
+  }
+
+  const saveGroup = async () => {
+    setGroupFormError('')
+    
+    if (!groupForm.name) {
+      setGroupFormError('Nome é obrigatório')
+      return
+    }
+
+    try {
+      let groupId = editingGroup?.id
+      
+      if (editingGroup) {
+        const res = await fetch(`${API_URL}/api/permissions/groups/${editingGroup.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: groupForm.name,
+            description: groupForm.description
+          })
+        })
+        
+        if (!res.ok) {
+          throw new Error('Failed to update group')
+        }
+      } else {
+        const res = await fetch(`${API_URL}/api/permissions/groups`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: groupForm.name,
+            description: groupForm.description
+          })
+        })
+        
+        if (!res.ok) {
+          throw new Error('Failed to create group')
+        }
+
+        const newGroup = await res.json()
+        groupId = newGroup.id
+      }
+
+      // Save permissions for group
+      const permRes = await fetch(`${API_URL}/api/permissions/groups/${groupId}/permissions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ permissionIds: selectedPermissions })
+      })
+
+      if (!permRes.ok) {
+        throw new Error('Failed to save group permissions')
+      }
+      
+      setGroupModalOpen(false)
+      fetchGroups()
+    } catch (error) {
+      console.error('Error saving group:', error)
+      setGroupFormError(error instanceof Error ? error.message : 'Erro ao salvar grupo')
+    }
+  }
+
+  const deleteGroupHandler = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este grupo?')) return
+    
+    try {
+      const res = await fetch(`${API_URL}/api/permissions/groups/${id}`, {
+        method: 'DELETE'
+      })
+      
+      if (!res.ok) throw new Error('Failed to delete group')
+      
+      fetchGroups()
+    } catch (error) {
+      console.error('Failed to delete group:', error)
+    }
+  }
+
+  const togglePermission = (permissionId: string) => {
+    setSelectedPermissions(prev =>
+      prev.includes(permissionId)
+        ? prev.filter(id => id !== permissionId)
+        : [...prev, permissionId]
+    )
   }
 
   const getRoleLabel = (role: string) => {
@@ -366,16 +604,16 @@ export default function Settings() {
   }
 
   const sidebarItems = [
-    { id: 'geral' as SettingsTab, name: 'Geral', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
-    { id: 'kanban' as SettingsTab, name: 'Kanban', icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' },
-    { id: 'webhooks' as SettingsTab, name: 'Webhooks', icon: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1' },
-    { id: 'usuarios' as SettingsTab, name: 'Usuários', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
-    { id: 'api' as SettingsTab, name: 'API', icon: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4' },
+    { id: 'geral' as SettingsPage, name: 'Geral', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
+    { id: 'kanban' as SettingsPage, name: 'Kanban', icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' },
+    { id: 'webhooks' as SettingsPage, name: 'Webhooks', icon: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1' },
+    { id: 'usuarios' as SettingsPage, name: 'Usuários', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
+    { id: 'grupos' as SettingsPage, name: 'Grupos', icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4' },
+    { id: 'api' as SettingsPage, name: 'API', icon: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4' },
   ]
 
   return (
-    <MainLayout>
-      <div className="flex gap-6">
+    <div className="flex gap-6">
         {/* Sidebar */}
         <div className="w-64 flex-shrink-0">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-4 sticky top-24">
@@ -384,7 +622,7 @@ export default function Settings() {
               {sidebarItems.map(item => (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => navigate(`/settings/${item.id}`)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${
                     activeTab === item.id
                       ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
@@ -414,6 +652,7 @@ export default function Settings() {
                 {activeTab === 'kanban' && 'Configure agendamentos e fluxo do Kanban'}
                 {activeTab === 'webhooks' && 'Gerencie integrações via webhooks'}
                 {activeTab === 'usuarios' && 'Gerencie usuários e permissões de acesso'}
+                {activeTab === 'grupos' && 'Configure grupos de permissões e controle de acesso granular'}
                 {activeTab === 'api' && 'Controle de acesso à API do CRM'}
               </p>
             </div>
@@ -494,20 +733,12 @@ export default function Settings() {
 
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Notificações</h3>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={notificationsEnabled}
-                      onChange={e => setNotificationsEnabled(e.target.checked)}
-                      className="sr-only"
-                    />
-                    <div className={`w-14 h-8 rounded-full transition-colors ${notificationsEnabled ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
-                      <div className={`w-6 h-6 bg-white rounded-full shadow-md transform transition-transform mt-1 ${notificationsEnabled ? 'translate-x-7' : 'translate-x-1'}`}></div>
-                    </div>
-                  </div>
-                  <span className="text-gray-700 dark:text-gray-300">Habilitar notificações do sistema</span>
-                </label>
+                <ToggleSwitch
+                  checked={notificationsEnabled}
+                  onChange={setNotificationsEnabled}
+                  label="Habilitar notificações do sistema"
+                  description="Receba notificações importantes do sistema"
+                />
               </div>
             </div>
           )}
@@ -598,23 +829,12 @@ export default function Settings() {
                     </select>
                   </div>
 
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <div className="relative">
-                      <input
-                        type="checkbox"
-                        checked={autoMoveOnSchedule}
-                        onChange={e => setAutoMoveOnSchedule(e.target.checked)}
-                        className="sr-only"
-                      />
-                      <div className={`w-14 h-8 rounded-full transition-colors ${autoMoveOnSchedule ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
-                        <div className={`w-6 h-6 bg-white rounded-full shadow-md transform transition-transform mt-1 ${autoMoveOnSchedule ? 'translate-x-7' : 'translate-x-1'}`}></div>
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-gray-700 dark:text-gray-300 font-medium">Mover lead automaticamente ao agendar</span>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Move o lead para a próxima etapa quando uma reunião é agendada</p>
-                    </div>
-                  </label>
+                  <ToggleSwitch
+                    checked={autoMoveOnSchedule}
+                    onChange={setAutoMoveOnSchedule}
+                    label="Mover lead automaticamente ao agendar"
+                    description="Move o lead para a próxima etapa quando uma reunião é agendada"
+                  />
                 </div>
               </div>
             </div>
@@ -951,6 +1171,49 @@ export default function Settings() {
                       <option value="admin">Administrador</option>
                     </select>
                   </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">País</label>
+                      <select
+                        value={userForm.phoneCountry}
+                        onChange={e => setUserForm({ ...userForm, phoneCountry: e.target.value })}
+                        className="w-full px-3 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm"
+                      >
+                        <option value="BR">🇧🇷 BR</option>
+                        <option value="US">🇺🇸 US</option>
+                        <option value="AR">🇦🇷 AR</option>
+                        <option value="MX">🇲🇽 MX</option>
+                      </select>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Telefone</label>
+                      <input
+                        type="tel"
+                        value={userForm.phone}
+                        onChange={e => setUserForm({ ...userForm, phone: e.target.value })}
+                        placeholder="(00) 00000-0000"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                    <input
+                      id="fetchWhatsAppProfile"
+                      type="checkbox"
+                      checked={fetchWhatsAppProfile}
+                      onChange={(e) => setFetchWhatsAppProfile(e.target.checked)}
+                      className="w-4 h-4 text-blue-500 rounded cursor-pointer"
+                    />
+                    <label htmlFor="fetchWhatsAppProfile" className="flex-1 cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <div className="flex items-center gap-2">
+                        <span>Buscar foto de perfil do WhatsApp</span>
+                        {loadingProfile && <div className="animate-spin w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full" />}
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Será usado automaticamente ao salvar</p>
+                    </label>
+                  </div>
                 </div>
 
                 <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-end gap-3">
@@ -965,6 +1228,108 @@ export default function Settings() {
                     className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all shadow-lg shadow-blue-500/30"
                   >
                     {editingUser ? 'Salvar Alterações' : 'Criar Usuário'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Group Modal */}
+          {groupModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setGroupModalOpen(false)} />
+              <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {editingGroup ? 'Editar Grupo' : 'Novo Grupo'}
+                  </h3>
+                  <button
+                    onClick={() => setGroupModalOpen(false)}
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+                  >
+                    <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  {groupFormError && (
+                    <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm">
+                      {groupFormError}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nome</label>
+                    <input
+                      type="text"
+                      value={groupForm.name}
+                      onChange={e => setGroupForm({ ...groupForm, name: e.target.value })}
+                      placeholder="ex: Vendedores, Gerentes, Suporte"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Descrição</label>
+                    <textarea
+                      value={groupForm.description}
+                      onChange={e => setGroupForm({ ...groupForm, description: e.target.value })}
+                      placeholder="Descrição do grupo (opcional)"
+                      rows={2}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Permissões</label>
+                    <div className="space-y-3">
+                      {Object.keys(allPermissions).length === 0 ? (
+                        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                          <svg className="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <p className="text-sm">Carregando permissões...</p>
+                        </div>
+                      ) : (
+                        Object.entries(allPermissions).map(([category, perms]) => (
+                          <div key={category} className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-2xl p-4 border border-gray-200 dark:border-gray-600">
+                            <h4 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm uppercase tracking-wider opacity-75">{category}</h4>
+                            <div className="space-y-2">
+                              {perms.map((perm: Permission) => (
+                                <div key={perm.id} className="flex items-center justify-between p-2.5 bg-white dark:bg-gray-600/30 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600/50 transition-all">
+                                  <label className="flex-1 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                                    {perm.name}
+                                  </label>
+                                  <ToggleSwitch
+                                    checked={selectedPermissions.includes(perm.id)}
+                                    onChange={() => togglePermission(perm.id)}
+                                    size="sm"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-end gap-3">
+                  <button
+                    onClick={() => setGroupModalOpen(false)}
+                    className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={saveGroup}
+                    disabled={!groupForm.name}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white disabled:text-gray-500 dark:disabled:text-gray-500 rounded-xl transition-all shadow-lg shadow-blue-500/30 disabled:shadow-none"
+                  >
+                    {editingGroup ? 'Salvar Alterações' : 'Criar Grupo'}
                   </button>
                 </div>
               </div>
@@ -1078,6 +1443,83 @@ export default function Settings() {
                     {editingWebhook ? 'Salvar Alterações' : 'Criar Webhook'}
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ==================== TAB: GRUPOS ==================== */}
+          {activeTab === 'grupos' && (
+            <div className="space-y-6">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Grupos de Permissões</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Organize e controle as permissões por grupo</p>
+                  </div>
+                  <button
+                    onClick={() => openGroupModal()}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all shadow-lg shadow-blue-500/30 flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Novo Grupo
+                  </button>
+                </div>
+
+                {groupsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+                  </div>
+                ) : groupsList.length === 0 ? (
+                  <div className="text-center py-12 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
+                    <svg className="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                    </svg>
+                    <p className="text-gray-500 dark:text-gray-400 mb-2">Nenhum grupo cadastrado</p>
+                    <p className="text-sm text-gray-400 dark:text-gray-500">Clique em "Novo Grupo" para adicionar</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {groupsList.map(group => (
+                      <div key={group.id} className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h4 className="font-semibold text-gray-900 dark:text-white">{group.name}</h4>
+                            {group.description && (
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{group.description}</p>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => openGroupModal(group)}
+                              className="p-2 rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-all"
+                              title="Editar"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => deleteGroupHandler(group.id)}
+                              className="p-2 rounded-lg bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-all"
+                              title="Excluir"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                        <div className="pt-3 border-t border-gray-200 dark:border-gray-800">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {group.permissions?.filter(p => p.enabled).length || 0} permissões
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1241,6 +1683,5 @@ export default function Settings() {
           )}
         </div>
       </div>
-    </MainLayout>
   )
 }

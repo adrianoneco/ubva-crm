@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import MainLayout from '../components/MainLayout'
 import { API_URL } from '../config'
+import { usePermissions } from '../hooks/usePermissions'
 
 interface BroadcastList {
   id: string
@@ -31,11 +32,12 @@ interface Contact {
 }
 
 export default function Campaigns() {
+  const { canCreate, canEdit, hasPermission } = usePermissions()
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [broadcastLists, setBroadcastLists] = useState<BroadcastList[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'campaigns' | 'lists'>('campaigns')
+  const [activeTab, setActiveTab] = useState<'campaigns' | 'lists' | 'pregenerated'>('campaigns')
 
   // Campaign modal
   const [showCampaignModal, setShowCampaignModal] = useState(false)
@@ -51,6 +53,10 @@ export default function Campaigns() {
   const [listName, setListName] = useState('')
   const [listDescription, setListDescription] = useState('')
   const [selectedContacts, setSelectedContacts] = useState<string[]>([])
+  const [listPrefix, setListPrefix] = useState('')
+  const [contactsPerList, setContactsPerList] = useState(250)
+  const [isAutoDistributing, setIsAutoDistributing] = useState(false)
+  const [selectAllContacts, setSelectAllContacts] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -69,11 +75,14 @@ export default function Campaigns() {
       const listsData = await listsRes.json()
       const contactsData = await contactsRes.json()
 
-      setCampaigns(campaignsData)
-      setBroadcastLists(listsData)
-      setContacts(contactsData)
+      setCampaigns(Array.isArray(campaignsData) ? campaignsData : [])
+      setBroadcastLists(Array.isArray(listsData) ? listsData : [])
+      setContacts(Array.isArray(contactsData) ? contactsData : [])
     } catch (error) {
       console.error('Failed to fetch data:', error)
+      setCampaigns([])
+      setBroadcastLists([])
+      setContacts([])
     } finally {
       setLoading(false)
     }
@@ -158,7 +167,57 @@ export default function Campaigns() {
     setListName('')
     setListDescription('')
     setSelectedContacts([])
+    setListPrefix('')
+    setContactsPerList(250)
+    setIsAutoDistributing(false)
+    setSelectAllContacts(false)
     setShowListModal(true)
+  }
+
+  const handleSelectAllContacts = (checked: boolean) => {
+    setSelectAllContacts(checked)
+    if (checked) {
+      setSelectedContacts(contacts.map(c => c.id))
+    } else {
+      setSelectedContacts([])
+    }
+  }
+
+  const handleAutoDistributeContacts = async () => {
+    if (!listName.trim()) {
+      alert('Digite o nome da lista primeiro')
+      return
+    }
+
+    setIsAutoDistributing(true)
+    try {
+      const response = await fetch(`${API_URL}/api/broadcasts/auto-distribute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: listName,
+          description: listDescription || null,
+          prefix: listPrefix || listName,
+          contactsPerList: contactsPerList,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        alert(`Erro: ${error.error || 'Falha ao distribuir contatos'}`)
+        return
+      }
+
+      const data = await response.json()
+      alert(`${data.listsCreated} listas criadas com sucesso!`)
+      setShowListModal(false)
+      fetchData()
+    } catch (error) {
+      console.error('Failed to auto distribute contacts:', error)
+      alert('Erro ao distribuir contatos automaticamente')
+    } finally {
+      setIsAutoDistributing(false)
+    }
   }
 
   const handleSaveList = async () => {
@@ -214,6 +273,8 @@ export default function Campaigns() {
       default: return status
     }
   }
+
+  const pregeneratedLists = broadcastLists.filter(list => /\s[#]?\d+$/.test(list.name))
 
   if (loading) {
     return (
@@ -335,6 +396,16 @@ export default function Campaigns() {
           >
             Listas ({broadcastLists.length})
           </button>
+          <button
+            onClick={() => setActiveTab('pregenerated')}
+            className={`px-4 py-2 rounded-t-lg font-medium transition-all ${
+              activeTab === 'pregenerated'
+                ? 'bg-blue-500 text-white'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+          >
+            Listas Pré-geradas
+          </button>
         </div>
 
         {/* Campaigns Tab */}
@@ -349,12 +420,14 @@ export default function Campaigns() {
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Nenhuma campanha criada</h3>
                 <p className="text-gray-500 dark:text-gray-400 mb-4">Crie sua primeira campanha para enviar mensagens em massa</p>
-                <button
-                  onClick={openNewCampaign}
-                  className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all"
-                >
-                  Criar Campanha
-                </button>
+                {canCreate('campaigns') && (
+                  <button
+                    onClick={openNewCampaign}
+                    className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all"
+                  >
+                    Criar Campanha
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid gap-4">
@@ -374,7 +447,7 @@ export default function Campaigns() {
                         <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{campaign.message}</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        {campaign.status === 'draft' && (
+                        {campaign.status === 'draft' && hasPermission('campaigns.execute') && (
                           <button
                             onClick={() => handleExecuteCampaign(campaign.id)}
                             className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-all"
@@ -386,24 +459,28 @@ export default function Campaigns() {
                             </svg>
                           </button>
                         )}
-                        <button
-                          onClick={() => openEditCampaign(campaign)}
-                          className="p-2 text-gray-400 hover:text-blue-500 transition-all"
-                          title="Editar"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCampaign(campaign.id)}
-                          className="p-2 text-gray-400 hover:text-red-500 transition-all"
-                          title="Excluir"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+                        {canEdit('campaigns') && (
+                          <button
+                            onClick={() => openEditCampaign(campaign)}
+                            className="p-2 text-gray-400 hover:text-blue-500 transition-all"
+                            title="Editar"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                        )}
+                        {canEdit('campaigns') && (
+                          <button
+                            onClick={() => handleDeleteCampaign(campaign.id)}
+                            className="p-2 text-gray-400 hover:text-red-500 transition-all"
+                            title="Excluir"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400 pt-4 border-t border-gray-100 dark:border-gray-700">
@@ -490,6 +567,73 @@ export default function Campaigns() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Pregenerated Lists Tab */}
+        {activeTab === 'pregenerated' && (
+          <div className="space-y-4">
+            {pregeneratedLists.length === 0 ? (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 shadow-lg border border-gray-100 dark:border-gray-700 text-center">
+                <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Nenhuma lista pré-gerada</h3>
+                <p className="text-gray-500 dark:text-gray-400 mb-4">Use o botão "Adicionar Contatos Automaticamente" na aba Nova Lista para criar listas pré-geradas com numeração automática</p>
+                <button
+                  onClick={openNewList}
+                  className="px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl transition-all"
+                >
+                  Criar Listas Pré-geradas
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    Exibindo <strong>{pregeneratedLists.length}</strong> {pregeneratedLists.length === 1 ? 'lista' : 'listas'} pré-geradas
+                  </p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {pregeneratedLists.map(list => (
+                    <div key={list.id} className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 rounded-2xl p-6 shadow-lg border border-purple-200 dark:border-purple-700 hover:border-purple-400 dark:hover:border-purple-500 transition-all">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl flex items-center justify-center text-white">
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7 20H5a2 2 0 01-2-2V9.414a1 1 0 01.293-.707l5.414-5.414a1 1 0 011.414 0l5.414 5.414a1 1 0 01.293.707V18a2 2 0 01-2 2h-3.28a1 1 0 00-.82.388l-2.844 3.559a1 1 0 01-1.6-1.235L6.327 21H5z" />
+                          </svg>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteList(list.id)}
+                          className="p-2 text-gray-400 hover:text-red-500 transition-all"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">{list.name}</h3>
+                      {list.description && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">{list.description}</p>
+                      )}
+                      <div className="flex items-center justify-between text-sm pt-3 border-t border-purple-200 dark:border-purple-700">
+                        <span className="text-gray-700 dark:text-gray-300 flex items-center gap-1 font-medium">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                          {list.contactCount || 0} contatos
+                        </span>
+                        <span className="text-gray-500 dark:text-gray-400">
+                          {new Date(list.createdAt).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -591,7 +735,32 @@ export default function Campaigns() {
                     value={listName}
                     onChange={(e) => setListName(e.target.value)}
                     className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white"
-                    placeholder="Nome da lista"
+                    placeholder="ex: Lista"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prefixo (opcional)</label>
+                  <input
+                    type="text"
+                    value={listPrefix}
+                    onChange={(e) => setListPrefix(e.target.value)}
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white"
+                    placeholder="ex: # (resultará em Lista #1, Lista #2, etc)"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Se vazio, usará o nome da lista
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contatos por lista</label>
+                  <input
+                    type="number"
+                    value={contactsPerList}
+                    onChange={(e) => setContactsPerList(Math.max(1, parseInt(e.target.value) || 250))}
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white"
+                    min="1"
                   />
                 </div>
 
@@ -606,10 +775,33 @@ export default function Campaigns() {
                   />
                 </div>
 
+                {!contacts.length && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      Para usar a distribuição automática, você precisa ter contatos cadastrados no sistema.
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Contatos ({selectedContacts.length} selecionados)
                   </label>
+                  {contacts.length > 0 && (
+                    <label className="flex items-center gap-3 p-2 mb-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg cursor-pointer bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                      <input
+                        type="checkbox"
+                        checked={selectAllContacts}
+                        onChange={(e) => handleSelectAllContacts(e.target.checked)}
+                        className="w-4 h-4 text-blue-600 rounded"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                          Selecionar todos ({contacts.length} contatos)
+                        </p>
+                      </div>
+                    </label>
+                  )}
                   <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-xl p-2 space-y-1">
                     {contacts.length === 0 ? (
                       <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
@@ -648,20 +840,43 @@ export default function Campaigns() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  onClick={() => setShowListModal(false)}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleSaveList}
-                  disabled={!listName}
-                  className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-all disabled:opacity-50"
-                >
-                  Salvar
-                </button>
+              <div className="flex flex-col gap-3 mt-6">
+                {contacts.length > 0 && (
+                  <button
+                    onClick={handleAutoDistributeContacts}
+                    disabled={!listName || isAutoDistributing}
+                    className="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-white rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isAutoDistributing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        Distribuindo...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Adicionar Contatos Automaticamente
+                      </>
+                    )}
+                  </button>
+                )}
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setShowListModal(false)}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSaveList}
+                    disabled={!listName}
+                    className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-all disabled:opacity-50"
+                  >
+                    Salvar
+                  </button>
+                </div>
               </div>
             </div>
           </div>

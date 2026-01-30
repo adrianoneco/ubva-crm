@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import MainLayout from '../components/MainLayout'
 import MeetingScheduler from '../components/MeetingScheduler'
 import { API_URL } from '../config'
+import { usePermissions } from '../hooks/usePermissions'
 
 interface ScheduleRequest {
   id: string
@@ -12,6 +13,7 @@ interface ScheduleRequest {
 }
 
 export default function AgendamentoPage() {
+  const { canDelete } = usePermissions()
   const [requests, setRequests] = useState<ScheduleRequest[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -128,12 +130,14 @@ export default function AgendamentoPage() {
                       {new Date(request.createdAt).toLocaleString('pt-BR')}
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => deleteRequest(request.id)}
-                        className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium"
-                      >
-                        Remover
-                      </button>
+                      {canDelete('appointments') && (
+                        <button
+                          onClick={() => deleteRequest(request.id)}
+                          className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium"
+                        >
+                          Remover
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

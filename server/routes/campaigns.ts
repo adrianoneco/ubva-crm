@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { db } from '../db'
 import { campaigns, broadcastLists, broadcastListContacts, contacts } from '../db/schema'
-import { eq, sql, count } from 'drizzle-orm'
+import { eq, count } from 'drizzle-orm'
 
 const router = Router()
 

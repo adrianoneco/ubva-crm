@@ -1,5 +1,5 @@
 import { db } from '../db'
-import { broadcastLists, broadcastListContacts } from '../db/schema'
+import { broadcastLists, broadcastListContacts, contacts } from '../db/schema'
 import { eq } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
 
@@ -117,4 +117,53 @@ export async function deleteBroadcastList(id: string) {
   await db.delete(broadcastListContacts).where(eq(broadcastListContacts.listId, id))
   // Depois deletar a lista
   await db.delete(broadcastLists).where(eq(broadcastLists.id, id))
+}
+
+export async function autoDistributeContactsToLists(
+  baseName: string,
+  prefix: string,
+  contactsPerList: number,
+  description?: string | null
+) {
+  // Buscar todos os contatos
+  const allContacts = await db.select().from(contacts).orderBy(contacts.createdAt)
+  
+  if (allContacts.length === 0) {
+    throw new Error('Nenhum contato disponível para distribuição')
+  }
+
+  // Dividir contatos em chunks
+  const chunks = []
+  for (let i = 0; i < allContacts.length; i += contactsPerList) {
+    chunks.push(allContacts.slice(i, i + contactsPerList))
+  }
+
+  // Criar listas com os contatos distribuídos
+  let listsCreated = 0
+  for (let i = 0; i < chunks.length; i++) {
+    const listNumber = i + 1
+    const listName = prefix ? `${baseName} ${prefix}${listNumber}` : `${baseName} #${listNumber}`
+    
+    // Criar a lista
+    const [list] = await db.insert(broadcastLists).values({
+      id: sql`gen_random_uuid()`,
+      name: listName,
+      description: description || null,
+    }).returning()
+    
+    // Inserir os contatos
+    const contactIds = chunks[i].map(c => c.id)
+    if (contactIds.length > 0) {
+      await db.insert(broadcastListContacts).values(
+        contactIds.map(contactId => ({
+          listId: list.id,
+          contactId
+        }))
+      )
+    }
+    
+    listsCreated++
+  }
+
+  return listsCreated
 }

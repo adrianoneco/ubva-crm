@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getApiUrl } from '../config'
+import AuthLayout from '../components/AuthLayout'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -40,7 +41,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center px-4 py-8">
+    <AuthLayout>
       <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8 w-full max-w-md border border-gray-200 dark:border-gray-700">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
@@ -53,7 +54,7 @@ export default function Login() {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -78,7 +79,7 @@ export default function Login() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-secondary-700 mb-2">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Senha
             </label>
             <input
@@ -87,7 +88,7 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-400 focus:border-transparent outline-none transition-all bg-white/50"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all bg-white dark:bg-gray-700 dark:text-white"
               placeholder="••••••••"
             />
           </div>
@@ -112,21 +113,21 @@ export default function Login() {
         <div className="mt-8 text-center space-y-3">
           <button
             onClick={() => navigate('/recover')}
-            className="text-primary-500 hover:text-primary-600 text-sm font-medium transition-colors"
+            className="text-primary-500 dark:text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 text-sm font-medium transition-colors"
           >
             Esqueceu sua senha?
           </button>
-          <div className="text-secondary-500 text-sm">
+          <div className="text-gray-600 dark:text-gray-400 text-sm">
             Não tem uma conta?{' '}
             <button
               onClick={() => navigate('/register')}
-              className="text-primary-500 hover:text-primary-600 font-semibold transition-colors"
+              className="text-primary-500 dark:text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 font-semibold transition-colors"
             >
               Cadastre-se
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </AuthLayout>
   )
 }

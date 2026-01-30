@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import MainLayout from '../components/MainLayout'
 import * as Papa from 'papaparse'
 import { validarETags } from '../utils/phoneExtractor'
+import { usePermissions } from '../hooks/usePermissions'
 
 
 interface Contact {
@@ -16,8 +17,9 @@ interface Contact {
 }
 
 export default function ContactsPage() {
+  const { canCreate, canEdit, canDelete } = usePermissions()
   const [contacts, setContacts] = useState<Contact[]>([])
-  const [filterType, setFilterType] = useState<string>('all')
+  const [filterType] = useState<string>('all')
 
   // Import modal state
   const [importOpen, setImportOpen] = useState(false)
@@ -27,6 +29,7 @@ export default function ContactsPage() {
   const [importing, setImporting] = useState(false)
   const [importProgress, setImportProgress] = useState(0)
   const [importTotal, setImportTotal] = useState(0)
+  const [fileLoading, setFileLoading] = useState(false)
 
   // UI helpers
   const [search, setSearch] = useState('')
@@ -134,12 +137,14 @@ export default function ContactsPage() {
             <p className="text-gray-600 dark:text-gray-400 mt-1">{contacts.length} contatos</p>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={openNewModal} className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-primary-500 to-primary-600 text-white hover:from-primary-600 hover:to-primary-700 transition-all font-medium shadow-lg shadow-primary-500/30 flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Novo Contato
-            </button>
+            {canCreate('contacts') && (
+              <button onClick={openNewModal} className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-primary-500 to-primary-600 text-white hover:from-primary-600 hover:to-primary-700 transition-all font-medium shadow-lg shadow-primary-500/30 flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Novo Contato
+              </button>
+            )}
             <button 
               onClick={() => {
                 const contactsWithPhone = contacts.filter(c => c.phone && c.phone.trim().length > 0)
@@ -254,12 +259,16 @@ export default function ContactsPage() {
                       </div>
 
                       <div className="flex gap-2">
-                        <button onClick={() => openEditModal(c)} className="flex-1 px-3 py-2 rounded-lg text-sm font-medium bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors">
-                          Editar
-                        </button>
-                        <button onClick={() => remove(c.id)} className="flex-1 px-3 py-2 rounded-lg text-sm font-medium bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors">
-                          Excluir
-                        </button>
+                        {canEdit('contacts') && (
+                          <button onClick={() => openEditModal(c)} className="flex-1 px-3 py-2 rounded-lg text-sm font-medium bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors">
+                            Editar
+                          </button>
+                        )}
+                        {canDelete('contacts') && (
+                          <button onClick={() => remove(c.id)} className="flex-1 px-3 py-2 rounded-lg text-sm font-medium bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors">
+                            Excluir
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -286,7 +295,18 @@ export default function ContactsPage() {
               </div>
 
               <div className="p-6 space-y-6">
-                {parsedRows.length === 0 && (
+                {fileLoading && (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <div className="relative w-16 h-16 mb-4">
+                      <div className="absolute inset-0 border-4 border-emerald-200 dark:border-emerald-900 rounded-full"></div>
+                      <div className="absolute inset-0 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin"></div>
+                    </div>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Carregando conteúdo...</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Processando arquivo</p>
+                  </div>
+                )}
+                
+                {!fileLoading && parsedRows.length === 0 && (
                   <div>
                     <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">Selecione um arquivo</label>
                     <div className="relative">
@@ -296,14 +316,26 @@ export default function ContactsPage() {
                         onChange={async (e) => {
                           const file = e.target.files?.[0]
                           if (!file) return
+                          setFileLoading(true)
                           const name = file.name.toLowerCase()
                           if (name.endsWith('.csv')) {
                             const text = await file.text()
                             const parsed = Papa.parse(text, { header: true, skipEmptyLines: true })
                             const rows = parsed.data as any[]
                             setParsedRows(rows)
-                            setFileColumns(Object.keys(rows[0] || {}))
-                            setMapping({ name: Object.keys(rows[0] || {})[0] || null, email: Object.keys(rows[0] || {})[1] || null, phone: null, company: null, type: null })
+                            const cols = Object.keys(rows[0] || {})
+                            setFileColumns(cols)
+                            
+                            // Auto-map columns based on exact names
+                            const autoMapping: Record<string, string | null> = { name: null, email: null, phone: null, company: null, type: null }
+                            cols.forEach(col => {
+                              if (col === 'Nome Fantasia' && !autoMapping.name) autoMapping.name = col
+                              else if (col === 'Email' && !autoMapping.email) autoMapping.email = col
+                              else if (col === 'Telefone' && !autoMapping.phone) autoMapping.phone = col
+                              else if (col === 'Nome Empresa' && !autoMapping.company) autoMapping.company = col
+                            })
+                            setMapping(autoMapping)
+                            setFileLoading(false)
                           } else {
                             const ab = await file.arrayBuffer()
                             const XLSX = (await import('xlsx')) as any
@@ -311,8 +343,19 @@ export default function ContactsPage() {
                             const sheet = wb.Sheets[wb.SheetNames[0]]
                             const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' }) as any[]
                             setParsedRows(rows)
-                            setFileColumns(Object.keys(rows[0] || {}))
-                            setMapping({ name: Object.keys(rows[0] || {})[0] || null, email: Object.keys(rows[0] || {})[1] || null, phone: null, company: null, type: null })
+                            const cols = Object.keys(rows[0] || {})
+                            setFileColumns(cols)
+                            
+                            // Auto-map columns based on exact names
+                            const autoMapping: Record<string, string | null> = { name: null, email: null, phone: null, company: null, type: null }
+                            cols.forEach(col => {
+                              if (col === 'Nome Fantasia' && !autoMapping.name) autoMapping.name = col
+                              else if (col === 'Email' && !autoMapping.email) autoMapping.email = col
+                              else if (col === 'Telefone' && !autoMapping.phone) autoMapping.phone = col
+                              else if (col === 'Nome Empresa' && !autoMapping.company) autoMapping.company = col
+                            })
+                            setMapping(autoMapping)
+                            setFileLoading(false)
                           }
                         }} 
                         className="absolute inset-0 opacity-0 cursor-pointer"
@@ -328,14 +371,16 @@ export default function ContactsPage() {
                   </div>
                 )}
 
-                {parsedRows.length > 0 && (
+                {!fileLoading && parsedRows.length > 0 && (
                   <div className="space-y-6">
                     <div>
                       <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Mapeamento de Colunas</h4>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {['name','email','phone','company'].map(field => (
                           <div key={field}>
-                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 capitalize">{field}</label>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 capitalize">
+                              {field === 'name' ? 'Nome Fantasia' : field === 'phone' ? 'Telefone' : field === 'company' ? 'Nome Empresa' : field}
+                            </label>
                             <select 
                               value={mapping[field] || ''} 
                               onChange={e => setMapping(prev => ({ ...prev, [field]: e.target.value || null }))} 
@@ -485,7 +530,8 @@ export default function ContactsPage() {
                         }
 
                         if (name && valid.length > 0) {
-                          validContacts.push({ name, email: email || null, phone: valid.join(', '), company: company || null, type: 'default' })
+                          // Save only the first valid phone number
+                          validContacts.push({ name, email: email || null, phone: valid[0], company: company || null, type: 'default' })
                         }
                       })
 

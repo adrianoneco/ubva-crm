@@ -64,8 +64,6 @@ export default function Dashboard() {
     weeklyTrend: [],
   })
   const [loading, setLoading] = useState(true)
-  const [kanbanUsers, setKanbanUsers] = useState<KanbanUser[]>([])
-  const [contacts, setContacts] = useState<Contact[]>([])
 
   useEffect(() => {
     fetchDashboardData()
@@ -82,9 +80,6 @@ export default function Dashboard() {
 
       const kanbanData: KanbanUser[] = await kanbanRes.json()
       const contactsData: Contact[] = await contactsRes.json()
-
-      setKanbanUsers(kanbanData)
-      setContacts(contactsData)
 
       // Calculate statistics
       const now = new Date()
@@ -310,7 +305,7 @@ export default function Dashboard() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Funil de Vendas</h3>
           <div className="space-y-3">
-            {stats.leadsByStep.map((step, index) => {
+            {stats.leadsByStep.map((step) => {
               const stepInfo = KANBAN_STEPS.find(s => s.id === step.step)
               const percentage = (step.count / getMaxLeadCount()) * 100
               return (

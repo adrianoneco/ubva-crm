@@ -16,6 +16,7 @@ interface ContactData {
   type?: string
   avatar?: string | null
   broadcastId?: string | null
+  profilePictureUrl?: string | null
   createdAt?: string
   updatedAt?: string
 }
@@ -30,6 +31,7 @@ export async function getContacts() {
     company: r.company || undefined,
     type: 'default',
     avatar: null,
+    profilePictureUrl: undefined,
     createdAt: r.createdAt?.toISOString(),
     updatedAt: r.updatedAt?.toISOString()
   }))
@@ -45,6 +47,16 @@ export async function createContact(data: ContactData) {
     broadcastId: data.broadcastId || null,
   }).returning()
   
+  // Fetch WhatsApp profile picture if phone is provided
+  let profilePictureUrl = data.profilePictureUrl
+  if (contact.phone && !profilePictureUrl) {
+    try {
+      profilePictureUrl = await fetchWhatsAppProfilePicture(contact.phone)
+    } catch (err) {
+      console.log(`[Contacts] Failed to fetch profile picture for ${contact.phone}:`, err)
+    }
+  }
+  
   return {
     id: contact.id,
     name: contact.name,
@@ -54,6 +66,7 @@ export async function createContact(data: ContactData) {
     broadcastId: contact.broadcastId || undefined,
     type: 'default',
     avatar: null,
+    profilePictureUrl: profilePictureUrl || undefined,
     createdAt: contact.createdAt?.toISOString(),
     updatedAt: contact.updatedAt?.toISOString()
   }
@@ -73,6 +86,16 @@ export async function updateContact(id: string, data: Partial<ContactData>) {
 
   if (!updated) throw new Error('Contact not found')
 
+  // Fetch WhatsApp profile picture if phone changed and no picture yet
+  let profilePictureUrl = data.profilePictureUrl
+  if (data.phone && !profilePictureUrl) {
+    try {
+      profilePictureUrl = await fetchWhatsAppProfilePicture(data.phone)
+    } catch (err) {
+      console.log(`[Contacts] Failed to fetch profile picture for ${data.phone}:`, err)
+    }
+  }
+
   return {
     id: updated.id,
     name: updated.name,
@@ -81,6 +104,7 @@ export async function updateContact(id: string, data: Partial<ContactData>) {
     company: updated.company || undefined,
     type: 'default',
     avatar: null,
+    profilePictureUrl: profilePictureUrl || undefined,
     createdAt: updated.createdAt?.toISOString(),
     updatedAt: updated.updatedAt?.toISOString()
   }
@@ -163,7 +187,59 @@ export async function saveAvatar(id: string, type: string, buffer: Buffer, ext: 
     company: updated.company || undefined,
     type,
     avatar: `/data/contacts/${type}/${id}-avatar${ext}`,
+    profilePictureUrl: undefined,
     createdAt: updated.createdAt?.toISOString(),
     updatedAt: updated.updatedAt?.toISOString()
+  }
+}
+
+// Fetch WhatsApp profile picture from Z-API
+export async function fetchWhatsAppProfilePicture(phone: string): Promise<string | null> {
+  try {
+    const zapiInstanceId = process.env.ZAPI_INSTANCE_ID
+    const zapiInstanceToken = process.env.ZAPI_INSTANCE_TOKEN
+    const zapiInstanceSecret = process.env.ZAPI_INSTANCE_SECRET
+
+    if (!zapiInstanceId || !zapiInstanceToken || !zapiInstanceSecret) {
+      console.log('[Contacts] Z-API credentials not configured')
+      return null
+    }
+
+    // Normalize phone to include country code if needed
+    let normalizedPhone = phone.replace(/\D/g, '')
+    if (!normalizedPhone.startsWith('55')) {
+      normalizedPhone = '55' + normalizedPhone
+    }
+
+    // Use the correct Z-API endpoint for profile picture
+    const zapiUrl = `https://api.z-api.io/instances/${zapiInstanceId}/token/${zapiInstanceToken}/profile-picture?phone=${normalizedPhone}&Client-Token=${zapiInstanceSecret}`
+    
+    const response = await fetch(zapiUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      console.log(`[Contacts] Z-API profile picture error: ${response.status}`)
+      return null
+    }
+
+    const data = await response.json()
+    
+    // Extract profile picture URL from response
+    // Z-API may return the image URL directly or in a 'profilePicture' or 'picture' field
+    const pictureUrl = data.profilePicture || data.picture || data || null
+    
+    if (pictureUrl) {
+      console.log(`[Contacts] Profile picture fetched for ${phone}: ${typeof pictureUrl === 'string' ? pictureUrl.substring(0, 50) : 'response received'}`)
+      return typeof pictureUrl === 'string' ? pictureUrl : null
+    }
+    
+    return null
+  } catch (err) {
+    console.error('[Contacts] Error fetching profile picture:', err)
+    return null
   }
 }

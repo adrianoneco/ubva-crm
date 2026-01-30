@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "dotenv -e .env -- concurrently --names \"CLIENT,SERVER\" \"bun run client\" \"bun run server:watch\"",
     "build": "tsc && vite build",
-    "kill-port": "npx kill-port 5006 5005",
     "preview": "vite preview",
     "client": "vite --host",
     "server": "tsx server/index.ts",

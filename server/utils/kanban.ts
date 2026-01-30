@@ -87,7 +87,7 @@ export async function updateKanbanUser(
   if (user.phone && !user.phone.startsWith('unknown-')) {
     try {
       await upsertContactByPhone({
-        name: user.name,
+        name: user.name || 'Sem nome',
         email: user.email || null,
         phone: user.phone,
         company: user.role || null,

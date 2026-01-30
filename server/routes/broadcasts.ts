@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { getBroadcastLists, createBroadcastList, deleteBroadcastList } from '../utils/broadcasts'
+import { getBroadcastLists, createBroadcastList, deleteBroadcastList, autoDistributeContactsToLists } from '../utils/broadcasts'
 
 const router = Router()
 
@@ -22,6 +22,34 @@ router.post('/', async (req, res) => {
   } catch (err) {
     console.error('Failed to create broadcast list', err)
     res.status(500).json({ error: 'Failed to create broadcast list' })
+  }
+})
+
+router.post('/auto-distribute', async (req, res) => {
+  try {
+    const { name, description, prefix, contactsPerList } = req.body
+    
+    if (!name) return res.status(400).json({ error: 'Name is required' })
+    if (!contactsPerList || contactsPerList < 1) {
+      return res.status(400).json({ error: 'contactsPerList must be at least 1' })
+    }
+
+    const listsCreated = await autoDistributeContactsToLists(
+      name,
+      prefix || '',
+      contactsPerList,
+      description || null
+    )
+
+    res.status(201).json({ 
+      success: true, 
+      listsCreated,
+      message: `${listsCreated} listas criadas com sucesso`
+    })
+  } catch (err) {
+    console.error('Failed to auto distribute contacts', err)
+    const message = err instanceof Error ? err.message : 'Failed to auto distribute contacts'
+    res.status(500).json({ error: message })
   }
 })
 

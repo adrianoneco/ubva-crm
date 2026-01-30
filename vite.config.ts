@@ -20,7 +20,7 @@ export default defineConfig({
   server: {
     port: 5005,
     // Allow local hostname used in deployment/test environments
-    allowedHosts: ['crm.ubva.com.br', 'localhost', '127.0.0.1'],
+    allowedHosts: ['crm.ubva.com.br', 'localhost', '127.0.0.1', '192.168.3.39'],
     proxy: {
       '/api': {
         target: 'http://localhost:5006',

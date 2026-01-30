@@ -124,37 +124,45 @@ export function telefonesParaJSON(telefones: Telefones): string {
 
 // Validar telefones extraídos de uma string e retornar tags válidas e inválidas
 export function validarETags(input: string): { valid: string[]; invalid: string[] } {
-  const telefones = extrairTelefones(input)
   const valid: string[] = []
   const invalid: string[] = []
 
-  // percorre todos os tipos e valores
-  for (const valor of Object.values(telefones)) {
-    const lista = Array.isArray(valor) ? valor : [valor]
-    for (const v of lista) {
-      const digitosRaw = (v || '').toString().replace(/\D/g, '')
+  // Dividir por "/" para processar múltiplos telefones
+  const partes = input.split('/')
+  
+  for (const parte of partes) {
+    const limpo = parte.trim()
+    if (!limpo) continue
 
-      // remover prefixo de país se existir (55)
-      const digitos = digitosRaw.startsWith('55') ? digitosRaw.slice(2) : digitosRaw
+    // Extrair apenas os dígitos
+    const digitos = limpo.replace(/\D/g, '')
+    
+    // Se tem menos de 8 dígitos, pular
+    if (digitos.length < 8) continue
 
-      // aceitar apenas 10 (DD+8) ou 11 (DD+9) dígitos
-      if (digitos.length === 10 || digitos.length === 11) {
-        // formatar para padrão (XX) XXXX-XXXX ou (XX) XXXXX-XXXX
-        const formatted = digitos.length === 10
-          ? `(${digitos.slice(0,2)}) ${digitos.slice(2,6)}-${digitos.slice(6)}`
-          : `(${digitos.slice(0,2)}) ${digitos.slice(2,7)}-${digitos.slice(7)}`
+    // Pegar os últimos 10 ou 11 dígitos (caso tenha código de país)
+    let telefone = digitos
+    if (digitos.length > 11) {
+      telefone = digitos.slice(-11) // pega últimos 11 dígitos
+    }
 
-        // validar formato exato: (00) 0000-0000 ou (00) 00000-0000
-        const re = /^\(\d{2}\) \d{4}-\d{4}$|^\(\d{2}\) \d{5}-\d{4}$/
-        if (re.test(formatted)) {
-          valid.push(formatted)
-        } else {
-          invalid.push(v as string)
-        }
+    // Aceitar apenas 10 (DD+8) ou 11 (DD+9) dígitos
+    if (telefone.length === 10 || telefone.length === 11) {
+      // Formatar para padrão (XX) XXXX-XXXX ou (XX) XXXXX-XXXX
+      const formatted = telefone.length === 10
+        ? `(${telefone.slice(0,2)}) ${telefone.slice(2,6)}-${telefone.slice(6)}`
+        : `(${telefone.slice(0,2)}) ${telefone.slice(2,7)}-${telefone.slice(7)}`
+
+      // Validar formato exato: (00) 0000-0000 ou (00) 00000-0000
+      const re = /^\(\d{2}\) \d{4}-\d{4}$|^\(\d{2}\) \d{5}-\d{4}$/
+      if (re.test(formatted)) {
+        valid.push(formatted)
       } else {
-        // considerar inválido se não tiver 10/11 dígitos
-        invalid.push(v as string)
+        invalid.push(limpo)
       }
+    } else if (digitos.length >= 8) {
+      // Tem dígitos suficientes mas não no formato esperado
+      invalid.push(limpo)
     }
   }
 

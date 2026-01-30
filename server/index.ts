@@ -27,8 +27,11 @@ import campaignsRouter from './routes/campaigns'
 import salesRouter from './routes/sales'
 import webhooksConfigRouter from './routes/webhooksConfig'
 import scheduleRequestsRouter from './routes/scheduleRequests'
+import permissionsRouter from './routes/permissions'
+import { ensureDefaultPermissions, ensureDefaultGroups } from './utils/permissions'
+import { runMigrations } from './utils/migrate'
 
-const PORT = process.env.PORT || 5006
+const PORT = process.env.PORT || 5001
 
 // Mask helper for logs
 const mask = (s?: string) => {
@@ -52,6 +55,21 @@ app.use(cors({
 }))
 app.use(express.json())
 app.use('/data', express.static(path.join(process.cwd(), 'data')))
+
+// Run database migrations and initialize default data
+async function initializeDatabase() {
+  try {
+    await runMigrations()
+    await ensureDefaultPermissions()
+    await ensureDefaultGroups()
+    console.log('✅ Database initialization completed')
+  } catch (error) {
+    console.error('❌ Error during database initialization:', error)
+    process.exit(1)
+  }
+}
+
+initializeDatabase()
 
 
 // Health check
@@ -84,6 +102,7 @@ app.use('/api/campaigns', campaignsRouter)
 app.use('/api/sales', salesRouter)
 app.use('/api/webhooks-config', webhooksConfigRouter)
 app.use('/api/schedule-requests', scheduleRequestsRouter)
+app.use('/api/permissions', permissionsRouter)
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

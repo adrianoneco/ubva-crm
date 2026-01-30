@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import PhoneInput from './PhoneInput'
+import { COUNTRIES } from '../utils/countries'
+import { API_URL } from '../config'
 
 interface KanbanUser {
   id: string
@@ -8,6 +11,8 @@ interface KanbanUser {
   role?: string
   avatar?: string
   kanban_step: number
+  country?: string
+  whatsappProfileFetch?: boolean
 }
 
 interface AddUserModalProps {
@@ -19,19 +24,53 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [country, setCountry] = useState('BR')
   const [role, setRole] = useState('')
   const [avatar, setAvatar] = useState('')
   const [stepIndex, setStepIndex] = useState(0)
+  const [fetchWhatsAppProfile, setFetchWhatsAppProfile] = useState(false)
+  const [loadingProfile, setLoadingProfile] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Extract phone digits and format with country dial code
+    const dialCode = COUNTRIES[country]?.dial || '+55'
+    const phoneDigits = phone.replace(/\D/g, '')
+    const fullPhone = `${dialCode}${phoneDigits}`
+
+    let profileAvatar = avatar
+    
+    // Fetch WhatsApp profile picture if checkbox is enabled
+    if (fetchWhatsAppProfile && phoneDigits) {
+      setLoadingProfile(true)
+      try {
+        const response = await fetch(`${API_URL}/api/contacts/whatsapp-profile`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: fullPhone })
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          profileAvatar = data.profile_picture_url || avatar
+        }
+      } catch (error) {
+        console.error('Failed to fetch WhatsApp profile:', error)
+      } finally {
+        setLoadingProfile(false)
+      }
+    }
+
     onAdd({
       name,
       email: email || undefined,
-      phone: phone || undefined,
+      phone: fullPhone,
       role: role || undefined,
-      avatar: avatar || undefined,
+      avatar: profileAvatar || undefined,
       kanban_step: stepIndex,
+      country: country,
+      whatsappProfileFetch: fetchWhatsAppProfile
     })
   }
 
@@ -86,22 +125,6 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
               </div>
 
               <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Telefone
-                </label>
-                <input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-gray-50 dark:bg-gray-700 dark:text-white"
-                  placeholder="(00) 00000-0000"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
                 <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Cargo / Role
                 </label>
@@ -114,27 +137,57 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
                   placeholder="Ex: Gerente"
                 />
               </div>
+            </div>
 
-              <div>
-                <label htmlFor="stepIndex" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Coluna Inicial
-                </label>
-                <select
-                  id="stepIndex"
-                  value={stepIndex}
-                  onChange={(e) => setStepIndex(parseInt(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-gray-50 dark:bg-gray-700 dark:text-white"
-                >
-                  <option value={0}>Início</option>
-                  <option value={1}>Cadastro</option>
-                  <option value={2}>Agendamento</option>
-                  <option value={3}>Treinamento 1</option>
-                  <option value={4}>Treinamento 2</option>
-                  <option value={5}>Enviar Pedido Teste</option>
-                  <option value={6}>Feedback</option>
-                  <option value={7}>Confirmação</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Telefone
+              </label>
+              <PhoneInput
+                value={phone}
+                onChange={setPhone}
+                defaultCountry={country}
+                onCountryChange={setCountry}
+                placeholder="(00) 0000-0000"
+              />
+            </div>
+
+            <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <input
+                id="whatsapp"
+                type="checkbox"
+                checked={fetchWhatsAppProfile}
+                onChange={(e) => setFetchWhatsAppProfile(e.target.checked)}
+                className="w-4 h-4 text-blue-500 rounded cursor-pointer"
+              />
+              <label htmlFor="whatsapp" className="flex-1 cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300">
+                <div className="flex items-center gap-2">
+                  <span>Buscar foto de perfil do WhatsApp</span>
+                  {loadingProfile && <div className="animate-spin w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full" />}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Será usado automaticamente na criação do contato</p>
+              </label>
+            </div>
+
+            <div>
+              <label htmlFor="stepIndex" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Coluna Inicial
+              </label>
+              <select
+                id="stepIndex"
+                value={stepIndex}
+                onChange={(e) => setStepIndex(parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-gray-50 dark:bg-gray-700 dark:text-white"
+              >
+                <option value={0}>Início</option>
+                <option value={1}>Cadastro</option>
+                <option value={2}>Agendamento</option>
+                <option value={3}>Treinamento 1</option>
+                <option value={4}>Treinamento 2</option>
+                <option value={5}>Enviar Pedido Teste</option>
+                <option value={6}>Feedback</option>
+                <option value={7}>Confirmação</option>
+              </select>
             </div>
 
             <div>
@@ -161,9 +214,17 @@ export default function AddUserModal({ onClose, onAdd }: AddUserModalProps) {
               </button>
               <button
                 type="submit"
-                className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all font-medium shadow-lg shadow-blue-500/30"
+                disabled={loadingProfile}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all font-medium shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Adicionar
+                {loadingProfile ? (
+                  <>
+                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                    Carregando...
+                  </>
+                ) : (
+                  'Adicionar'
+                )}
               </button>
             </div>
           </form>

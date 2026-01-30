@@ -8,6 +8,9 @@ export const users = pgTable('users', {
   email: varchar('email', { length: 255 }).notNull().unique(),
   password: varchar('password', { length: 255 }).notNull(),
   role: varchar('role', { length: 50 }).notNull().default('user'),
+  phone: varchar('phone', { length: 50 }),
+  phoneCountry: varchar('phone_country', { length: 2 }).default('BR'),
+  avatar: text('avatar'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -124,4 +127,60 @@ export const scheduleRequests = pgTable('schedule_requests', {
   pictureUrl: text('picture_url'),
   phone: varchar('phone', { length: 50 }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+// Groups table for role-based access control
+export const groups = pgTable('groups', {
+  id: text('id').notNull().default(sql`gen_random_uuid()`).primaryKey(),
+  name: varchar('name', { length: 255 }).notNull().unique(),
+  description: text('description'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+// Permissions table
+export const permissions = pgTable('permissions', {
+  id: text('id').notNull().default(sql`gen_random_uuid()`).primaryKey(),
+  key: varchar('key', { length: 100 }).notNull().unique(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  category: varchar('category', { length: 50 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+// Group permissions mapping
+export const groupPermissions = pgTable('group_permissions', {
+  id: text('id').notNull().default(sql`gen_random_uuid()`).primaryKey(),
+  groupId: text('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  permissionId: text('permission_id').notNull().references(() => permissions.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+// User groups mapping
+export const userGroups = pgTable('user_groups', {
+  id: text('id').notNull().default(sql`gen_random_uuid()`).primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  groupId: text('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+// User permission overrides (for individual user permissions)
+export const userPermissionOverrides = pgTable('user_permission_overrides', {
+  id: text('id').notNull().default(sql`gen_random_uuid()`).primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  permissionId: text('permission_id').notNull().references(() => permissions.id, { onDelete: 'cascade' }),
+  granted: boolean('granted').notNull().default(true), // true = grant, false = deny
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+// OTP codes table for password recovery
+export const otpCodes = pgTable('otp_codes', {
+  id: text('id').notNull().default(sql`gen_random_uuid()`).primaryKey(),
+  phone: varchar('phone', { length: 50 }).notNull(),
+  code: varchar('code', { length: 6 }).notNull(),
+  attempts: integer('attempts').notNull().default(0),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
 })

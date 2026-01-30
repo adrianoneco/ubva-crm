@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { db } from '../db'
 import { sales, webglassBot } from '../db/schema'
-import { eq, sql, desc } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 
 const router = Router()
 

@@ -21,14 +21,14 @@ ALTER TABLE broadcast_list_contacts DROP COLUMN list_id;
 ALTER TABLE broadcast_list_contacts RENAME COLUMN contact_id_new TO contact_id;
 ALTER TABLE broadcast_list_contacts RENAME COLUMN list_id_new TO list_id;
 
--- 5) Replace primary keys on parent tables
-ALTER TABLE contacts DROP CONSTRAINT contacts_pkey;
+-- 5) Replace primary keys on parent tables (CASCADE if there are dependent FKs)
+ALTER TABLE contacts DROP CONSTRAINT contacts_pkey CASCADE;
 ALTER TABLE contacts DROP COLUMN id;
 ALTER TABLE contacts RENAME COLUMN id_new TO id;
 ALTER TABLE contacts ALTER COLUMN id SET NOT NULL;
 ALTER TABLE contacts ADD PRIMARY KEY (id);
 
-ALTER TABLE broadcast_lists DROP CONSTRAINT broadcast_lists_pkey;
+ALTER TABLE broadcast_lists DROP CONSTRAINT broadcast_lists_pkey CASCADE;
 ALTER TABLE broadcast_lists DROP COLUMN id;
 ALTER TABLE broadcast_lists RENAME COLUMN id_new TO id;
 ALTER TABLE broadcast_lists ALTER COLUMN id SET NOT NULL;
