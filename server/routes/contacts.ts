@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express'
 // @ts-ignore
 import multer from 'multer'
 import { getContacts, createContact, updateContact, deleteContact, saveAvatar } from '../utils/contacts'
+import { dispatchWebhook } from './webhooksConfig'
 
 const router = Router()
 const upload = multer()
@@ -24,6 +25,12 @@ router.post('/', async (req, res) => {
     }
 
     const contact = await createContact({ name, email, phone, company, type, profilePictureUrl })
+    
+    // Dispatch webhook for contact.created event
+    dispatchWebhook('contact.created', {
+      contact,
+      timestamp: new Date().toISOString()
+    })
     
     // Dispatch webhook if triggerInstallBot is true
     if (triggerInstallBot) {

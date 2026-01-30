@@ -28,6 +28,7 @@ import salesRouter from './routes/sales'
 import webhooksConfigRouter from './routes/webhooksConfig'
 import scheduleRequestsRouter from './routes/scheduleRequests'
 import permissionsRouter from './routes/permissions'
+import whatsappBusinessRouter from './routes/whatsappBusiness'
 import { ensureDefaultPermissions, ensureDefaultGroups } from './utils/permissions'
 import { runMigrations } from './utils/migrate'
 
@@ -103,6 +104,7 @@ app.use('/api/sales', salesRouter)
 app.use('/api/webhooks-config', webhooksConfigRouter)
 app.use('/api/schedule-requests', scheduleRequestsRouter)
 app.use('/api/permissions', permissionsRouter)
+app.use('/api/whatsapp-business', whatsappBusinessRouter)
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

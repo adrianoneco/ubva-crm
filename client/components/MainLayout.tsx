@@ -86,7 +86,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
-      <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
+      <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md shadow-sm border-b border-gray-200 dark:border-gray-700 fixed top-0 left-0 right-0 z-40 h-16">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo + title */}
@@ -176,8 +176,8 @@ export default function MainLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <div className="flex">
-        <aside className="hidden md:flex flex-col w-64 bg-white/90 dark:bg-gray-800/90 border-r border-gray-200 dark:border-gray-700 p-4 sticky top-16 h-[calc(100vh-4rem)]">
+      <div className="flex pt-16">
+        <aside className="hidden md:flex flex-col w-64 bg-white/90 dark:bg-gray-800/90 border-r border-gray-200 dark:border-gray-700 p-4 fixed top-16 left-0 h-[calc(100vh-4rem)] z-30">
           {/* Main Navigation */}
           <nav className="flex flex-col gap-2 flex-1">
             <button onClick={() => navigate('/dashboard')} className={navItemClass('/dashboard')}>
@@ -242,7 +242,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
           )}
         </aside>
 
-        <div className="flex-1">
+        <div className="flex-1 md:ml-64">
           {/* Mobile bottom nav */}
           <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 z-30">
             <div className="flex justify-around py-2">

@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { getKanbanUsers, createKanbanUser, updateKanbanUser, deleteKanbanUser } from '../utils/kanban'
 import { io } from '../index'
+import { dispatchWebhook } from './webhooksConfig'
 
 const router = Router()
 
@@ -26,6 +27,13 @@ router.post('/', async (req, res) => {
     // Emit socket event to notify all clients
     io.emit('kanban-update')
     console.log('[Kanban] Created user, broadcasting update')
+    
+    // Dispatch webhook for lead created
+    dispatchWebhook('lead.created', {
+      user,
+      timestamp: new Date().toISOString()
+    })
+    
     res.status(201).json(user)
   } catch (error) {
     console.error('Create kanban user error:', error)
@@ -54,8 +62,27 @@ router.put('/:id', async (req, res) => {
     console.log('[Kanban] Updated user', id, ', event emitted')
 
     const moved = previous && previous.kanbanStep !== user.kanbanStep
+    
+    // Dispatch webhook for lead update (always)
+    dispatchWebhook('lead.updated', {
+      user,
+      previousStep: previous?.kanbanStep,
+      newStep: user.kanbanStep,
+      moved,
+      timestamp: new Date().toISOString()
+    })
+    
     // Only fire webhook when the item was moved between columns (kanbanStep changed)
     if (moved) {
+      // Dispatch kanban position changed webhook
+      dispatchWebhook('kanban.position_changed', {
+        user,
+        previousStep: previous.kanbanStep,
+        newStep: user.kanbanStep,
+        timestamp: new Date().toISOString()
+      })
+      
+      // Legacy webhook support via KB_WEBHOOK_URL
       const webhookUrl = process.env.KB_WEBHOOK_URL
       if (webhookUrl) {
         ;(async () => {
@@ -153,6 +180,13 @@ router.delete('/:id', async (req, res) => {
     // Emit socket event to notify all clients
     io.emit('kanban-update')
     console.log('[Kanban] Deleted user', id, ', broadcasting update')
+    
+    // Dispatch webhook for lead deleted
+    dispatchWebhook('lead.deleted', {
+      id,
+      timestamp: new Date().toISOString()
+    })
+    
     res.status(204).send()
   } catch (error) {
     console.error('Delete kanban user error:', error)

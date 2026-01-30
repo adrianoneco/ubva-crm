@@ -4,6 +4,7 @@ import { io } from '../index'
 import { db } from '../db'
 import { appointments } from '../db/schema'
 import { eq } from 'drizzle-orm'
+import { dispatchWebhook } from './webhooksConfig'
 
 const router = Router()
 
@@ -38,6 +39,10 @@ router.post('/', async (req, res) => {
     const row = await createAppointment({ date_time: new Date(date_time), title, duration_minutes, customer_name, notes, status, phone, meet_link })
     io.emit('schedule-update')
     console.log('[Appointments] Created appointment, broadcasting update')
+    dispatchWebhook('appointment.created', {
+      appointment: row,
+      timestamp: new Date().toISOString()
+    })
     res.status(201).json(row)
   } catch (err) {
     const e: any = err
@@ -55,6 +60,10 @@ router.put('/:id', async (req, res) => {
     const updated = await updateAppointment(id, req.body)
     io.emit('schedule-update')
     console.log('[Appointments] Updated appointment', id, ', broadcasting update')
+    dispatchWebhook('appointment.updated', {
+      appointment: updated,
+      timestamp: new Date().toISOString()
+    })
     res.json(updated)
   } catch (err) {
     console.error('Update appointment error:', err)
@@ -228,6 +237,10 @@ router.delete('/:id', async (req, res) => {
     await deleteAppointment(req.params.id)
     io.emit('schedule-update')
     console.log('[Appointments] Deleted appointment, broadcasting update')
+    dispatchWebhook('appointment.canceled', {
+      appointmentId: req.params.id,
+      timestamp: new Date().toISOString()
+    })
     res.status(204).send()
   } catch (err) {
     console.error('Delete appointment error:', err)

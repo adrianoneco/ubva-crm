@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { API_URL } from '../config'
 import ToggleSwitch from '../components/ToggleSwitch'
 
-type SettingsPage = 'geral' | 'kanban' | 'webhooks' | 'usuarios' | 'grupos' | 'api'
+type SettingsPage = 'geral' | 'kanban' | 'webhooks' | 'usuarios' | 'grupos' | 'api' | 'whatsapp'
 
 interface WebhookEvent {
   id: string
@@ -69,6 +69,7 @@ export default function Settings() {
 
   // ==================== WEBHOOKS ====================
   const [webhooks, setWebhooks] = useState<WebhookConfig[]>([])
+  const [webhooksLoading, setWebhooksLoading] = useState(false)
   const [webhookModalOpen, setWebhookModalOpen] = useState(false)
   const [editingWebhook, setEditingWebhook] = useState<WebhookConfig | null>(null)
   const [webhookForm, setWebhookForm] = useState<WebhookConfig>({
@@ -127,6 +128,43 @@ export default function Settings() {
   const [groupFormError, setGroupFormError] = useState('')
   const [allPermissions, setAllPermissions] = useState<Record<string, Permission[]>>({})
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([])
+
+  // ==================== WHATSAPP ====================
+  const [waLoading, setWaLoading] = useState(false)
+  const [waError, setWaError] = useState('')
+  const [waSuccess, setWaSuccess] = useState('')
+  const [waProfile, setWaProfile] = useState({
+    name: '',
+    status: '',
+    photo: '',
+    business: {
+      description: '',
+      email: '',
+      websites: [] as string[],
+      address: '',
+      vertical: ''
+    }
+  })
+  const [waBusinessHours, setWaBusinessHours] = useState<Record<string, { open: string, close: string } | null>>({
+    monday: { open: '08:00', close: '18:00' },
+    tuesday: { open: '08:00', close: '18:00' },
+    wednesday: { open: '08:00', close: '18:00' },
+    thursday: { open: '08:00', close: '18:00' },
+    friday: { open: '08:00', close: '18:00' },
+    saturday: null,
+    sunday: null
+  })
+  const [waGreetingMessage, setWaGreetingMessage] = useState({ message: '', enabled: false })
+  const [waAwayMessage, setWaAwayMessage] = useState({ message: '', enabled: false, schedule: { startTime: '18:00', endTime: '08:00' } })
+  const [waPrivacy, setWaPrivacy] = useState({
+    profilePhoto: 'all' as 'all' | 'contacts' | 'nobody',
+    status: 'all' as 'all' | 'contacts' | 'nobody',
+    lastSeen: 'all' as 'all' | 'contacts' | 'nobody',
+    readReceipts: true,
+    groupAdd: 'all' as 'all' | 'contacts' | 'nobody'
+  })
+  const [waPhotoFile, setWaPhotoFile] = useState<File | null>(null)
+  const [waPhotoPreview, setWaPhotoPreview] = useState<string | null>(null)
 
   const [savedOk, setSavedOk] = useState(false)
   const [copySuccess, setCopySuccess] = useState('')
@@ -201,25 +239,76 @@ export default function Settings() {
     setWebhookModalOpen(true)
   }
 
-  const saveWebhook = () => {
+  const saveWebhook = async () => {
     if (!webhookForm.name || !webhookForm.url) return
     
-    if (editingWebhook) {
-      setWebhooks(prev => prev.map(w => w.id === editingWebhook.id ? webhookForm : w))
-    } else {
-      setWebhooks(prev => [...prev, webhookForm])
+    try {
+      if (editingWebhook) {
+        // Update existing webhook
+        const res = await fetch(`${API_URL}/api/webhooks-config/${editingWebhook.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: webhookForm.name,
+            url: webhookForm.url,
+            events: webhookForm.events,
+            active: webhookForm.enabled
+          })
+        })
+        if (res.ok) {
+          await fetchWebhooks()
+        }
+      } else {
+        // Create new webhook
+        const res = await fetch(`${API_URL}/api/webhooks-config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: webhookForm.name,
+            url: webhookForm.url,
+            events: webhookForm.events,
+            active: webhookForm.enabled
+          })
+        })
+        if (res.ok) {
+          await fetchWebhooks()
+        }
+      }
+    } catch (error) {
+      console.error('Failed to save webhook:', error)
     }
     setWebhookModalOpen(false)
   }
 
-  const deleteWebhook = (id: string) => {
+  const deleteWebhook = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir este webhook?')) {
-      setWebhooks(prev => prev.filter(w => w.id !== id))
+      try {
+        const res = await fetch(`${API_URL}/api/webhooks-config/${id}`, { method: 'DELETE' })
+        if (res.ok) {
+          await fetchWebhooks()
+        }
+      } catch (error) {
+        console.error('Failed to delete webhook:', error)
+      }
     }
   }
 
-  const toggleWebhookEnabled = (id: string) => {
-    setWebhooks(prev => prev.map(w => w.id === id ? { ...w, enabled: !w.enabled } : w))
+  const toggleWebhookEnabled = async (id: string) => {
+    const webhook = webhooks.find(w => w.id === id)
+    if (!webhook) return
+    
+    try {
+      const res = await fetch(`${API_URL}/api/webhooks-config/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: !webhook.enabled })
+      })
+      if (res.ok) {
+        await fetchWebhooks()
+      }
+    } catch (error) {
+      console.error('Failed to toggle webhook:', error)
+    }
   }
 
   const toggleFormEvent = (eventId: string) => {
@@ -251,8 +340,32 @@ export default function Settings() {
     } else if (activeTab === 'grupos') {
       fetchGroups()
       fetchPermissions()
+    } else if (activeTab === 'webhooks') {
+      fetchWebhooks()
     }
   }, [activeTab])
+
+  // ==================== WEBHOOK API FUNCTIONS ====================
+  const fetchWebhooks = async () => {
+    setWebhooksLoading(true)
+    try {
+      const res = await fetch(`${API_URL}/api/webhooks-config`)
+      const data = await res.json()
+      // Map API response to WebhookConfig format
+      setWebhooks(data.map((w: any) => ({
+        id: w.id,
+        name: w.name,
+        url: w.url,
+        secret: w.secret || '',
+        events: w.events || [],
+        enabled: w.active !== false
+      })))
+    } catch (error) {
+      console.error('Failed to fetch webhooks:', error)
+    } finally {
+      setWebhooksLoading(false)
+    }
+  }
 
   const openUserModal = (user?: User) => {
     setUserFormError('')
@@ -605,6 +718,7 @@ export default function Settings() {
 
   const sidebarItems = [
     { id: 'geral' as SettingsPage, name: 'Geral', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
+    { id: 'whatsapp' as SettingsPage, name: 'WhatsApp', icon: 'M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z' },
     { id: 'kanban' as SettingsPage, name: 'Kanban', icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' },
     { id: 'webhooks' as SettingsPage, name: 'Webhooks', icon: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1' },
     { id: 'usuarios' as SettingsPage, name: 'Usuários', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
@@ -649,6 +763,7 @@ export default function Settings() {
               </h1>
               <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
                 {activeTab === 'geral' && 'Configurações gerais do sistema'}
+                {activeTab === 'whatsapp' && 'Configure perfil, mensagens e privacidade do WhatsApp Business'}
                 {activeTab === 'kanban' && 'Configure agendamentos e fluxo do Kanban'}
                 {activeTab === 'webhooks' && 'Gerencie integrações via webhooks'}
                 {activeTab === 'usuarios' && 'Gerencie usuários e permissões de acesso'}
@@ -860,7 +975,14 @@ export default function Settings() {
                   </button>
                 </div>
                 
-                {webhooks.length === 0 ? (
+                {webhooksLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <svg className="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </div>
+                ) : webhooks.length === 0 ? (
                   <div className="text-center py-12 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
                     <svg className="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
@@ -1677,6 +1799,626 @@ export default function Settings() {
   -H "Authorization: Bearer ${apiKey}" \\
   -H "Content-Type: application/json"`}
                   </pre>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ==================== TAB: WHATSAPP ==================== */}
+          {activeTab === 'whatsapp' && (
+            <div className="space-y-6">
+              {/* Status Messages */}
+              {waError && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-center gap-3">
+                  <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-red-700 dark:text-red-300">{waError}</span>
+                  <button onClick={() => setWaError('')} className="ml-auto text-red-500 hover:text-red-700">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+              {waSuccess && (
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 flex items-center gap-3">
+                  <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-green-700 dark:text-green-300">{waSuccess}</span>
+                  <button onClick={() => setWaSuccess('')} className="ml-auto text-green-500 hover:text-green-700">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+
+              {/* Load Profile Button */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Dados do WhatsApp Business</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Carregue as configurações atuais do WhatsApp para editar</p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      setWaLoading(true)
+                      setWaError('')
+                      try {
+                        const res = await fetch(`${API_URL}/api/whatsapp-business/profile`)
+                        if (!res.ok) throw new Error('Falha ao carregar perfil')
+                        const data = await res.json()
+                        setWaProfile({
+                          name: data.name || '',
+                          status: data.status || '',
+                          photo: data.photo || '',
+                          business: {
+                            description: data.business?.description || '',
+                            email: data.business?.email || '',
+                            websites: data.business?.websites || [],
+                            address: data.business?.address || '',
+                            vertical: data.business?.vertical || ''
+                          }
+                        })
+                        setWaSuccess('Perfil carregado com sucesso!')
+                        setTimeout(() => setWaSuccess(''), 3000)
+                      } catch (err: any) {
+                        setWaError(err.message || 'Erro ao carregar perfil')
+                      } finally {
+                        setWaLoading(false)
+                      }
+                    }}
+                    disabled={waLoading}
+                    className="px-4 py-2 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white rounded-xl transition-all flex items-center gap-2"
+                  >
+                    {waLoading ? (
+                      <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    )}
+                    Carregar Dados
+                  </button>
+                </div>
+              </div>
+
+              {/* Profile Section */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Perfil</h3>
+                
+                <div className="flex gap-6">
+                  {/* Photo */}
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="relative">
+                      <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex items-center justify-center">
+                        {(waPhotoPreview || waProfile.photo) ? (
+                          <img src={waPhotoPreview || waProfile.photo} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                          <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        )}
+                      </div>
+                      <label className="absolute bottom-0 right-0 w-8 h-8 bg-green-500 hover:bg-green-600 rounded-full flex items-center justify-center cursor-pointer transition-colors shadow-lg">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) {
+                              setWaPhotoFile(file)
+                              const reader = new FileReader()
+                              reader.onload = (e) => setWaPhotoPreview(e.target?.result as string)
+                              reader.readAsDataURL(file)
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                    {waPhotoFile && (
+                      <button
+                        onClick={async () => {
+                          setWaLoading(true)
+                          try {
+                            const formData = new FormData()
+                            formData.append('photo', waPhotoFile)
+                            const res = await fetch(`${API_URL}/api/whatsapp-business/profile/photo`, {
+                              method: 'POST',
+                              body: formData
+                            })
+                            if (!res.ok) throw new Error('Falha ao atualizar foto')
+                            setWaSuccess('Foto atualizada!')
+                            setWaPhotoFile(null)
+                            setTimeout(() => setWaSuccess(''), 3000)
+                          } catch (err: any) {
+                            setWaError(err.message)
+                          } finally {
+                            setWaLoading(false)
+                          }
+                        }}
+                        disabled={waLoading}
+                        className="text-sm px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg"
+                      >
+                        Enviar Foto
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Profile Fields */}
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nome</label>
+                      <input
+                        type="text"
+                        value={waProfile.name}
+                        onChange={(e) => setWaProfile({ ...waProfile, name: e.target.value })}
+                        placeholder="Nome do perfil"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Recado / Status</label>
+                      <input
+                        type="text"
+                        value={waProfile.status}
+                        onChange={(e) => setWaProfile({ ...waProfile, status: e.target.value })}
+                        placeholder="Seu recado ou status"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Descrição do Negócio</label>
+                      <textarea
+                        value={waProfile.business.description}
+                        onChange={(e) => setWaProfile({ ...waProfile, business: { ...waProfile.business, description: e.target.value } })}
+                        placeholder="Descrição da sua empresa"
+                        rows={3}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white resize-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
+                      <input
+                        type="email"
+                        value={waProfile.business.email}
+                        onChange={(e) => setWaProfile({ ...waProfile, business: { ...waProfile.business, email: e.target.value } })}
+                        placeholder="contato@empresa.com"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Website</label>
+                      <input
+                        type="url"
+                        value={waProfile.business.websites[0] || ''}
+                        onChange={(e) => setWaProfile({ ...waProfile, business: { ...waProfile.business, websites: [e.target.value] } })}
+                        placeholder="https://www.empresa.com"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Endereço</label>
+                      <input
+                        type="text"
+                        value={waProfile.business.address}
+                        onChange={(e) => setWaProfile({ ...waProfile, business: { ...waProfile.business, address: e.target.value } })}
+                        placeholder="Rua, número, cidade - estado"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Categoria</label>
+                      <select
+                        value={waProfile.business.vertical}
+                        onChange={(e) => setWaProfile({ ...waProfile, business: { ...waProfile.business, vertical: e.target.value } })}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                      >
+                        <option value="">Selecione...</option>
+                        <option value="AUTOMOTIVE">Automotivo</option>
+                        <option value="BEAUTY">Beleza & Cosméticos</option>
+                        <option value="CLOTHING">Vestuário & Moda</option>
+                        <option value="EDUCATION">Educação</option>
+                        <option value="ENTERTAINMENT">Entretenimento</option>
+                        <option value="EVENTS">Eventos</option>
+                        <option value="FINANCE">Finanças</option>
+                        <option value="GROCERY">Alimentação</option>
+                        <option value="HEALTH">Saúde</option>
+                        <option value="HOTEL">Hotelaria</option>
+                        <option value="NONPROFIT">ONG / Sem fins lucrativos</option>
+                        <option value="PROFESSIONAL_SERVICES">Serviços Profissionais</option>
+                        <option value="REAL_ESTATE">Imobiliário</option>
+                        <option value="RESTAURANT">Restaurante</option>
+                        <option value="RETAIL">Varejo</option>
+                        <option value="TRAVEL">Viagens & Turismo</option>
+                        <option value="OTHER">Outro</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex gap-3">
+                  <button
+                    onClick={async () => {
+                      setWaLoading(true)
+                      try {
+                        // Update name
+                        if (waProfile.name) {
+                          await fetch(`${API_URL}/api/whatsapp-business/profile/name`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: waProfile.name })
+                          })
+                        }
+                        // Update status
+                        await fetch(`${API_URL}/api/whatsapp-business/profile/status`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ status: waProfile.status })
+                        })
+                        // Update business profile
+                        await fetch(`${API_URL}/api/whatsapp-business/business/profile`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(waProfile.business)
+                        })
+                        setWaSuccess('Perfil atualizado com sucesso!')
+                        setTimeout(() => setWaSuccess(''), 3000)
+                      } catch (err: any) {
+                        setWaError(err.message || 'Erro ao atualizar perfil')
+                      } finally {
+                        setWaLoading(false)
+                      }
+                    }}
+                    disabled={waLoading}
+                    className="px-6 py-2 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white rounded-xl transition-all"
+                  >
+                    Salvar Perfil
+                  </button>
+                </div>
+              </div>
+
+              {/* Business Hours */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Horário de Funcionamento</h3>
+                
+                <div className="space-y-3">
+                  {[
+                    { key: 'monday', label: 'Segunda-feira' },
+                    { key: 'tuesday', label: 'Terça-feira' },
+                    { key: 'wednesday', label: 'Quarta-feira' },
+                    { key: 'thursday', label: 'Quinta-feira' },
+                    { key: 'friday', label: 'Sexta-feira' },
+                    { key: 'saturday', label: 'Sábado' },
+                    { key: 'sunday', label: 'Domingo' }
+                  ].map(day => (
+                    <div key={day.key} className="flex items-center gap-4">
+                      <div className="w-32">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={waBusinessHours[day.key] !== null}
+                            onChange={(e) => {
+                              setWaBusinessHours({
+                                ...waBusinessHours,
+                                [day.key]: e.target.checked ? { open: '08:00', close: '18:00' } : null
+                              })
+                            }}
+                            className="w-4 h-4 rounded text-green-500 focus:ring-green-500"
+                          />
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{day.label}</span>
+                        </label>
+                      </div>
+                      {waBusinessHours[day.key] && (
+                        <>
+                          <input
+                            type="time"
+                            value={waBusinessHours[day.key]?.open || '08:00'}
+                            onChange={(e) => setWaBusinessHours({
+                              ...waBusinessHours,
+                              [day.key]: { ...waBusinessHours[day.key]!, open: e.target.value }
+                            })}
+                            className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                          />
+                          <span className="text-gray-500">às</span>
+                          <input
+                            type="time"
+                            value={waBusinessHours[day.key]?.close || '18:00'}
+                            onChange={(e) => setWaBusinessHours({
+                              ...waBusinessHours,
+                              [day.key]: { ...waBusinessHours[day.key]!, close: e.target.value }
+                            })}
+                            className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                          />
+                        </>
+                      )}
+                      {!waBusinessHours[day.key] && (
+                        <span className="text-gray-400 text-sm">Fechado</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6">
+                  <button
+                    onClick={async () => {
+                      setWaLoading(true)
+                      try {
+                        await fetch(`${API_URL}/api/whatsapp-business/business/hours`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ 
+                            timezone: 'America/Sao_Paulo',
+                            businessHours: waBusinessHours 
+                          })
+                        })
+                        setWaSuccess('Horários atualizados!')
+                        setTimeout(() => setWaSuccess(''), 3000)
+                      } catch (err: any) {
+                        setWaError(err.message || 'Erro ao atualizar horários')
+                      } finally {
+                        setWaLoading(false)
+                      }
+                    }}
+                    disabled={waLoading}
+                    className="px-6 py-2 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white rounded-xl transition-all"
+                  >
+                    Salvar Horários
+                  </button>
+                </div>
+              </div>
+
+              {/* Messages */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Mensagens Automáticas</h3>
+                
+                {/* Greeting Message */}
+                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-white">Mensagem de Saudação</h4>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Enviada quando alguém entra em contato pela primeira vez</p>
+                    </div>
+                    <ToggleSwitch
+                      checked={waGreetingMessage.enabled}
+                      onChange={(checked) => setWaGreetingMessage({ ...waGreetingMessage, enabled: checked })}
+                    />
+                  </div>
+                  {waGreetingMessage.enabled && (
+                    <textarea
+                      value={waGreetingMessage.message}
+                      onChange={(e) => setWaGreetingMessage({ ...waGreetingMessage, message: e.target.value })}
+                      placeholder="Olá! Seja bem-vindo(a)! Como posso ajudar?"
+                      rows={3}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none"
+                    />
+                  )}
+                </div>
+
+                {/* Away Message */}
+                <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-white">Mensagem de Ausência</h4>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Enviada fora do horário de atendimento</p>
+                    </div>
+                    <ToggleSwitch
+                      checked={waAwayMessage.enabled}
+                      onChange={(checked) => setWaAwayMessage({ ...waAwayMessage, enabled: checked })}
+                    />
+                  </div>
+                  {waAwayMessage.enabled && (
+                    <>
+                      <textarea
+                        value={waAwayMessage.message}
+                        onChange={(e) => setWaAwayMessage({ ...waAwayMessage, message: e.target.value })}
+                        placeholder="Obrigado pelo contato! No momento estamos fora do horário de atendimento. Retornaremos em breve!"
+                        rows={3}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none mb-3"
+                      />
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Ativar das</span>
+                        <input
+                          type="time"
+                          value={waAwayMessage.schedule.startTime}
+                          onChange={(e) => setWaAwayMessage({
+                            ...waAwayMessage,
+                            schedule: { ...waAwayMessage.schedule, startTime: e.target.value }
+                          })}
+                          className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                        />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">às</span>
+                        <input
+                          type="time"
+                          value={waAwayMessage.schedule.endTime}
+                          onChange={(e) => setWaAwayMessage({
+                            ...waAwayMessage,
+                            schedule: { ...waAwayMessage.schedule, endTime: e.target.value }
+                          })}
+                          className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="mt-6 flex gap-3">
+                  <button
+                    onClick={async () => {
+                      setWaLoading(true)
+                      try {
+                        await fetch(`${API_URL}/api/whatsapp-business/messages/greeting`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(waGreetingMessage)
+                        })
+                        await fetch(`${API_URL}/api/whatsapp-business/messages/away`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(waAwayMessage)
+                        })
+                        setWaSuccess('Mensagens atualizadas!')
+                        setTimeout(() => setWaSuccess(''), 3000)
+                      } catch (err: any) {
+                        setWaError(err.message || 'Erro ao atualizar mensagens')
+                      } finally {
+                        setWaLoading(false)
+                      }
+                    }}
+                    disabled={waLoading}
+                    className="px-6 py-2 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white rounded-xl transition-all"
+                  >
+                    Salvar Mensagens
+                  </button>
+                </div>
+              </div>
+
+              {/* Privacy */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Privacidade</h3>
+                
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-white">Confirmação de Leitura</h4>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Mostrar quando você leu as mensagens</p>
+                    </div>
+                    <ToggleSwitch
+                      checked={waPrivacy.readReceipts}
+                      onChange={(checked) => setWaPrivacy({ ...waPrivacy, readReceipts: checked })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-gray-900 dark:text-white mb-2">Foto do Perfil</label>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Quem pode ver sua foto de perfil</p>
+                    <div className="flex gap-3">
+                      {[
+                        { value: 'all', label: 'Todos' },
+                        { value: 'contacts', label: 'Contatos' },
+                        { value: 'nobody', label: 'Ninguém' }
+                      ].map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setWaPrivacy({ ...waPrivacy, profilePhoto: opt.value as any })}
+                          className={`px-4 py-2 rounded-lg border transition-all ${
+                            waPrivacy.profilePhoto === opt.value
+                              ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                              : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-gray-900 dark:text-white mb-2">Visto por Último</label>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Quem pode ver quando você esteve online</p>
+                    <div className="flex gap-3">
+                      {[
+                        { value: 'all', label: 'Todos' },
+                        { value: 'contacts', label: 'Contatos' },
+                        { value: 'nobody', label: 'Ninguém' }
+                      ].map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setWaPrivacy({ ...waPrivacy, lastSeen: opt.value as any })}
+                          className={`px-4 py-2 rounded-lg border transition-all ${
+                            waPrivacy.lastSeen === opt.value
+                              ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                              : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-gray-900 dark:text-white mb-2">Recado / Status</label>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Quem pode ver seu recado</p>
+                    <div className="flex gap-3">
+                      {[
+                        { value: 'all', label: 'Todos' },
+                        { value: 'contacts', label: 'Contatos' },
+                        { value: 'nobody', label: 'Ninguém' }
+                      ].map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setWaPrivacy({ ...waPrivacy, status: opt.value as any })}
+                          className={`px-4 py-2 rounded-lg border transition-all ${
+                            waPrivacy.status === opt.value
+                              ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                              : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-gray-900 dark:text-white mb-2">Grupos</label>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Quem pode adicionar você a grupos</p>
+                    <div className="flex gap-3">
+                      {[
+                        { value: 'all', label: 'Todos' },
+                        { value: 'contacts', label: 'Contatos' },
+                        { value: 'nobody', label: 'Ninguém' }
+                      ].map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setWaPrivacy({ ...waPrivacy, groupAdd: opt.value as any })}
+                          className={`px-4 py-2 rounded-lg border transition-all ${
+                            waPrivacy.groupAdd === opt.value
+                              ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                              : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <button
+                    onClick={async () => {
+                      setWaLoading(true)
+                      try {
+                        await fetch(`${API_URL}/api/whatsapp-business/privacy`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(waPrivacy)
+                        })
+                        setWaSuccess('Privacidade atualizada!')
+                        setTimeout(() => setWaSuccess(''), 3000)
+                      } catch (err: any) {
+                        setWaError(err.message || 'Erro ao atualizar privacidade')
+                      } finally {
+                        setWaLoading(false)
+                      }
+                    }}
+                    disabled={waLoading}
+                    className="px-6 py-2 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white rounded-xl transition-all"
+                  >
+                    Salvar Privacidade
+                  </button>
                 </div>
               </div>
             </div>
