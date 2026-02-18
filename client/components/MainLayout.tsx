@@ -85,7 +85,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     `w-full text-left py-3 px-4 rounded-lg transition-all flex items-center gap-3 ${location.pathname === path ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
       <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md shadow-sm border-b border-gray-200 dark:border-gray-700 fixed top-0 left-0 right-0 z-40 h-16">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -281,7 +281,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8 overflow-x-hidden">
+          <main className="px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8 overflow-hidden">
             {children}
           </main>
         </div>

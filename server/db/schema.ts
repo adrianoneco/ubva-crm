@@ -27,6 +27,7 @@ export const webglassBot = pgTable('webglass_bot', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   kanbanStep: integer('kanban_step').default(0),
   avatar: text('avatar'),
+  platform: text('platform'),
   agendamentoId: text('agendamento_id'),
   feedback: text('feedback'),
   nomeFantasia: text('nome_fantasia'),

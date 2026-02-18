@@ -1,5 +1,34 @@
 // lightweight Kanban card
 
+// Format phone number for display: 554195927699 -> (41) 9 5927-6990
+function formatPhoneDisplay(phone: string): string {
+  if (!phone) return ''
+  const digits = phone.replace(/\D/g, '')
+  
+  if (digits.startsWith('55') && digits.length >= 12) {
+    const ddd = digits.slice(2, 4)
+    const rest = digits.slice(4)
+    if (rest.length === 9) {
+      return `(${ddd}) ${rest[0]} ${rest.slice(1, 5)}-${rest.slice(5)}`
+    } else if (rest.length === 8) {
+      return `(${ddd}) ${rest.slice(0, 4)}-${rest.slice(4)}`
+    }
+  }
+  
+  if (digits.length === 11) {
+    const ddd = digits.slice(0, 2)
+    const rest = digits.slice(2)
+    return `(${ddd}) ${rest[0]} ${rest.slice(1, 5)}-${rest.slice(5)}`
+  }
+  if (digits.length === 10) {
+    const ddd = digits.slice(0, 2)
+    const rest = digits.slice(2)
+    return `(${ddd}) ${rest.slice(0, 4)}-${rest.slice(4)}`
+  }
+  
+  return phone
+}
+
 interface Props {
   user: any
   onDelete?: (id?: string) => void
@@ -80,7 +109,7 @@ export default function KanbanCard({ user, onDelete, onSelect, isDragging, indic
             <svg className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
             </svg>
-            <span className="text-xs text-gray-600 dark:text-gray-300 truncate">{user.phone}</span>
+            <span className="text-xs text-gray-600 dark:text-gray-300 truncate">{formatPhoneDisplay(user.phone)}</span>
           </div>
         )}
 

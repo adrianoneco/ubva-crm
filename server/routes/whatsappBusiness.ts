@@ -46,9 +46,9 @@ async function zapiRequest(endpoint: string, method: string = 'GET', body?: any)
     'Content-Type': 'application/json'
   }
 
-  // Add client-secret header if available
+  // Add client-token header if secret is available
   if (creds.instanceSecret) {
-    headers['Client-Secret'] = creds.instanceSecret
+    headers['client-token'] = creds.instanceSecret
   }
 
   const options: RequestInit = {
@@ -80,12 +80,15 @@ async function zapiRequest(endpoint: string, method: string = 'GET', body?: any)
 // ==================== PROFILE ====================
 
 // Get WhatsApp Business profile
-router.get('/profile', async (_req: Request, res: Response) => {
+router.get('/profile', async (req: Request, res: Response) => {
   try {
-    // Get business profile
+    const phone = req.query.phone as string
+    
+    // Get business profile with phone param if provided
     let profileData: any = {}
     try {
-      profileData = await zapiRequest('business-profile')
+      const endpoint = phone ? `business/profile?phone=${phone}` : 'business/profile'
+      profileData = await zapiRequest(endpoint)
     } catch (e) {
       console.log('[Z-API] Could not fetch business profile')
     }
@@ -121,7 +124,15 @@ router.get('/profile', async (_req: Request, res: Response) => {
       name: profileName,
       status: profileStatus,
       photo: profilePhoto,
-      business: profileData || {},
+      business: {
+        description: profileData.description || '',
+        address: profileData.address || '',
+        email: profileData.email || '',
+        websites: profileData.websites || [],
+        categories: profileData.categories || [],
+        businessHours: profileData.businessHours || [],
+        hasCoverPhoto: profileData.hasCoverPhoto || false,
+      },
     })
   } catch (error: any) {
     console.error('[WhatsApp Business] Profile fetch error:', error)
@@ -195,33 +206,113 @@ router.delete('/profile/photo', async (_req: Request, res: Response) => {
 
 // ==================== BUSINESS PROFILE ====================
 
-// Update business profile (description, email, website, address, vertical)
+// Update business profile (description, email, website, address)
 router.put('/business/profile', async (req: Request, res: Response) => {
   try {
-    const { description, email, websites, address, vertical } = req.body
+    const { description, email, websites, address } = req.body
+    const results: any = {}
 
-    const payload: any = {}
-    if (description !== undefined) payload.description = description
-    if (email !== undefined) payload.email = email
-    if (websites !== undefined) payload.websites = Array.isArray(websites) ? websites : [websites]
-    if (address !== undefined) payload.address = address
-    if (vertical !== undefined) payload.vertical = vertical
+    // Update description
+    if (description !== undefined) {
+      try {
+        results.description = await zapiRequest('business/company-description', 'POST', { value: description })
+      } catch (e) {
+        console.error('[Z-API] Failed to update description:', e)
+      }
+    }
 
-    const result = await zapiRequest('update-business-profile', 'POST', payload)
-    res.json({ success: true, result })
+    // Update email
+    if (email !== undefined) {
+      try {
+        results.email = await zapiRequest('business/company-email', 'POST', { value: email })
+      } catch (e) {
+        console.error('[Z-API] Failed to update email:', e)
+      }
+    }
+
+    // Update address
+    if (address !== undefined) {
+      try {
+        results.address = await zapiRequest('business/company-address', 'POST', { value: address })
+      } catch (e) {
+        console.error('[Z-API] Failed to update address:', e)
+      }
+    }
+
+    // Update websites (if supported by a separate endpoint)
+    if (websites !== undefined) {
+      try {
+        const websiteList = Array.isArray(websites) ? websites : [websites]
+        results.websites = await zapiRequest('business/company-websites', 'POST', { value: websiteList })
+      } catch (e) {
+        console.error('[Z-API] Failed to update websites:', e)
+      }
+    }
+
+    res.json({ success: true, results })
   } catch (error: any) {
     console.error('[WhatsApp Business] Business profile update error:', error)
     res.status(500).json({ error: error.message || 'Failed to update business profile' })
   }
 })
 
+// Update company description
+router.put('/business/description', async (req: Request, res: Response) => {
+  try {
+    const { value } = req.body
+    if (!value) {
+      return res.status(400).json({ error: 'Description value is required' })
+    }
+    const result = await zapiRequest('business/company-description', 'POST', { value })
+    res.json({ success: true, result })
+  } catch (error: any) {
+    console.error('[WhatsApp Business] Description update error:', error)
+    res.status(500).json({ error: error.message || 'Failed to update description' })
+  }
+})
+
+// Update company email
+router.put('/business/email', async (req: Request, res: Response) => {
+  try {
+    const { value } = req.body
+    if (!value) {
+      return res.status(400).json({ error: 'Email value is required' })
+    }
+    const result = await zapiRequest('business/company-email', 'POST', { value })
+    res.json({ success: true, result })
+  } catch (error: any) {
+    console.error('[WhatsApp Business] Email update error:', error)
+    res.status(500).json({ error: error.message || 'Failed to update email' })
+  }
+})
+
+// Update company address
+router.put('/business/address', async (req: Request, res: Response) => {
+  try {
+    const { value } = req.body
+    if (!value) {
+      return res.status(400).json({ error: 'Address value is required' })
+    }
+    const result = await zapiRequest('business/company-address', 'POST', { value })
+    res.json({ success: true, result })
+  } catch (error: any) {
+    console.error('[WhatsApp Business] Address update error:', error)
+    res.status(500).json({ error: error.message || 'Failed to update address' })
+  }
+})
+
 // ==================== BUSINESS HOURS ====================
 
-// Get business hours
-router.get('/business/hours', async (_req: Request, res: Response) => {
+// Get business hours (from business profile)
+router.get('/business/hours', async (req: Request, res: Response) => {
   try {
-    const result = await zapiRequest('business/business-hours')
-    res.json(result)
+    const phone = req.query.phone as string
+    const endpoint = phone ? `business/profile?phone=${phone}` : 'business/profile'
+    const result = await zapiRequest(endpoint)
+    res.json({
+      businessHours: result.businessHours || [],
+      timezone: result.timezone || 'America/Sao_Paulo'
+    })
   } catch (error: any) {
     console.error('[WhatsApp Business] Business hours fetch error:', error)
     res.status(500).json({ error: error.message || 'Failed to fetch business hours' })
@@ -229,17 +320,22 @@ router.get('/business/hours', async (_req: Request, res: Response) => {
 })
 
 // Update business hours
+// Z-API format: { timezone, days: [{ dayOfWeek, openTime, closeTime }], mode }
 router.put('/business/hours', async (req: Request, res: Response) => {
   try {
-    const { timezone, businessHours } = req.body
+    const { timezone, days, mode } = req.body
     
-    // businessHours format:
-    // { monday: { open: "08:00", close: "18:00" }, tuesday: {...}, ... }
-    // Use null or omit a day to mark it as closed
+    // days format: [{ dayOfWeek: "MONDAY", openTime: "08:00", closeTime: "18:00" }, ...]
+    // mode: "specificHours", "alwaysOpen", "appointmentOnly"
+    
+    if (!days && mode !== 'alwaysOpen') {
+      return res.status(400).json({ error: 'Days array is required for specificHours mode' })
+    }
 
-    const result = await zapiRequest('business/business-hours', 'POST', {
+    const result = await zapiRequest('business/hours', 'POST', {
       timezone: timezone || 'America/Sao_Paulo',
-      businessHours
+      days: days || [],
+      mode: mode || 'specificHours'
     })
     res.json({ success: true, result })
   } catch (error: any) {

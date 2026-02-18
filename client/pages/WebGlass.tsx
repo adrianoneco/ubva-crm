@@ -3,6 +3,70 @@ import { io } from 'socket.io-client'
 import MainLayout from '../components/MainLayout'
 import { usePermissions } from '../hooks/usePermissions'
 
+// Format phone number for display: 554195927699 -> (41) 9 5927-6990
+function formatPhoneDisplay(phone: string): string {
+  if (!phone) return ''
+  // Remove all non-numeric characters
+  const digits = phone.replace(/\D/g, '')
+  
+  // Brazilian number with country code (55)
+  if (digits.startsWith('55') && digits.length >= 12) {
+    const ddd = digits.slice(2, 4)
+    const rest = digits.slice(4)
+    if (rest.length === 9) {
+      // Mobile: (41) 9 5927-6990
+      return `(${ddd}) ${rest[0]} ${rest.slice(1, 5)}-${rest.slice(5)}`
+    } else if (rest.length === 8) {
+      // Landline: (41) 3333-4444
+      return `(${ddd}) ${rest.slice(0, 4)}-${rest.slice(4)}`
+    }
+  }
+  
+  // Without country code but with DDD
+  if (digits.length === 11) {
+    const ddd = digits.slice(0, 2)
+    const rest = digits.slice(2)
+    return `(${ddd}) ${rest[0]} ${rest.slice(1, 5)}-${rest.slice(5)}`
+  }
+  if (digits.length === 10) {
+    const ddd = digits.slice(0, 2)
+    const rest = digits.slice(2)
+    return `(${ddd}) ${rest.slice(0, 4)}-${rest.slice(4)}`
+  }
+  
+  return phone
+}
+
+// Format phone input as user types and return raw digits
+function formatPhoneInput(value: string): { display: string; raw: string } {
+  const digits = value.replace(/\D/g, '')
+  let display = ''
+  
+  if (digits.length <= 2) {
+    display = digits
+  } else if (digits.length <= 4) {
+    display = `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+  } else if (digits.length <= 8) {
+    display = `(${digits.slice(0, 2)}) ${digits.slice(2, 3)} ${digits.slice(3, 7)}`
+  } else if (digits.length <= 11) {
+    display = `(${digits.slice(0, 2)}) ${digits.slice(2, 3)} ${digits.slice(3, 7)}-${digits.slice(7, 11)}`
+  } else {
+    // With country code
+    const cc = digits.slice(0, 2)
+    const ddd = digits.slice(2, 4)
+    const rest = digits.slice(4)
+    if (rest.length <= 5) {
+      display = `+${cc} (${ddd}) ${rest}`
+    } else if (rest.length <= 9) {
+      display = `+${cc} (${ddd}) ${rest[0]} ${rest.slice(1, 5)}-${rest.slice(5)}`
+    } else {
+      display = `+${cc} (${ddd}) ${rest[0]} ${rest.slice(1, 5)}-${rest.slice(5, 9)}`
+    }
+  }
+  
+  return { display, raw: digits }
+}
+
 interface KanbanUser {
   id: string
   name: string
@@ -93,10 +157,16 @@ export default function WebGlass() {
   async function handleAddUser(e: React.FormEvent) {
     e.preventDefault()
     try {
+      // Ensure phone has country code 55
+      let phone = formData.phone.replace(/\D/g, '')
+      if (phone.length <= 11 && !phone.startsWith('55')) {
+        phone = '55' + phone
+      }
+      
       const response = await fetch('/api/kanban', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, phone }),
       })
 
       if (response.ok) {
@@ -114,10 +184,16 @@ export default function WebGlass() {
     if (!editingUser) return
 
     try {
+      // Ensure phone has country code 55
+      let phone = formData.phone.replace(/\D/g, '')
+      if (phone.length <= 11 && !phone.startsWith('55')) {
+        phone = '55' + phone
+      }
+      
       const response = await fetch(`/api/kanban/${editingUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, phone }),
       })
 
       if (response.ok) {
@@ -194,7 +270,7 @@ export default function WebGlass() {
 
   return (
     <MainLayout>
-      <div className="space-y-6 overflow-x-hidden max-w-full">
+      <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Pipeline</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
@@ -204,9 +280,9 @@ export default function WebGlass() {
 
         {/* Kanban Board */}
             {/* Kanban Board with Horizontal Scroll */}
-            <div className="relative overflow-hidden" style={{ height: 'calc(100vh - 280px)', margin: '0 -16px' }}>
+            <div className="relative overflow-hidden rounded-lg w-full md:w-[calc(100vw-16rem-4rem)]" style={{ height: 'calc(100vh - 280px)' }}>
               <div 
-                className="flex gap-4 h-full overflow-x-auto overflow-y-hidden px-4 pb-4" 
+                className="flex gap-4 h-full overflow-x-auto overflow-y-hidden pb-4 pr-8" 
                 style={{ 
                   maxHeight: 'calc(100vh - 280px)'
                 }}
@@ -273,7 +349,7 @@ export default function WebGlass() {
                             {user.name}
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                            {user.phone}
+                            {formatPhoneDisplay(user.phone)}
                           </p>
                           {user.email && (
                             <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
@@ -455,10 +531,18 @@ export default function WebGlass() {
                 <input
                   type="text"
                   required
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  value={formatPhoneInput(formData.phone).display}
+                  onChange={(e) => {
+                    const { raw } = formatPhoneInput(e.target.value)
+                    // Limit to 13 digits (country code + DDD + 9 digits)
+                    if (raw.length <= 13) {
+                      setFormData({ ...formData, phone: raw })
+                    }
+                  }}
+                  placeholder="(00) 0 0000-0000"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Inclua DDD. Ex: (41) 9 9999-9999</p>
               </div>
 
               <div>

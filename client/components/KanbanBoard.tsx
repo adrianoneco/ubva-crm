@@ -202,7 +202,7 @@ export default function KanbanBoard({ onSelect }: { onSelect?: (user: KanbanUser
   }
 
   return (
-    <div className="p-3 relative">
+    <div className="p-3 relative overflow-hidden">
       {/* Floating add button will be shown in the bottom-right corner */}
 
       {users.length === 0 ? (
@@ -244,7 +244,7 @@ export default function KanbanBoard({ onSelect }: { onSelect?: (user: KanbanUser
             </svg>
           </button>
 
-          <div ref={scrollRef} className="flex gap-6 overflow-x-auto pb-6 px-4 scroll-smooth">
+          <div ref={scrollRef} className="flex gap-6 overflow-x-auto pb-6 px-4 pr-8 scroll-smooth">
             {COLUMNS.map((column) => {
                 const columnUsers = users.filter(u => u.kanban_step === column.id)
                 const palette = PALETTES[column.id % PALETTES.length]

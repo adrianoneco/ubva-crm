@@ -12,14 +12,51 @@ interface ScheduleRequest {
   createdAt: string
 }
 
+interface Appointment {
+  id: string
+  date_time: string
+  title?: string
+  customer_name?: string
+  phone?: string
+  status?: string
+  duration_minutes?: number
+  notes?: string
+  meet_link?: string
+}
+
 export default function AgendamentoPage() {
   const { canDelete } = usePermissions()
   const [requests, setRequests] = useState<ScheduleRequest[]>([])
+  const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingAppointments, setLoadingAppointments] = useState(true)
 
   useEffect(() => {
     fetchRequests()
+    fetchAppointments()
   }, [])
+
+  const fetchAppointments = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/appointments`, {
+        headers: {
+          'x-api-key': localStorage.getItem('api_key') || '',
+        },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        // Sort by date_time ASC
+        const sorted = data.sort((a: Appointment, b: Appointment) => 
+          new Date(a.date_time).getTime() - new Date(b.date_time).getTime()
+        )
+        setAppointments(sorted)
+      }
+    } catch (error) {
+      console.error('Error fetching appointments:', error)
+    } finally {
+      setLoadingAppointments(false)
+    }
+  }
 
   const fetchRequests = async () => {
     try {
@@ -137,6 +174,101 @@ export default function AgendamentoPage() {
                         >
                           Remover
                         </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Appointments Table */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 mt-6">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+          Horários Agendados
+        </h3>
+
+        {loadingAppointments ? (
+          <div className="text-center py-8">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+          </div>
+        ) : appointments.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            Nenhum agendamento encontrado
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Data/Hora
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Cliente
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Telefone
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Duração
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Status
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Meet
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {appointments.map((apt) => (
+                  <tr
+                    key={apt.id}
+                    className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                  >
+                    <td className="py-3 px-4 text-gray-900 dark:text-white">
+                      {new Date(apt.date_time).toLocaleString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </td>
+                    <td className="py-3 px-4 text-gray-900 dark:text-white">
+                      {apt.customer_name || apt.title || '-'}
+                    </td>
+                    <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
+                      {apt.phone || '-'}
+                    </td>
+                    <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
+                      {apt.duration_minutes ? `${apt.duration_minutes} min` : '-'}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        apt.status === 'agendado' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                        apt.status === 'disponivel' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                        apt.status === 'cancelado' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                        'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                      }`}>
+                        {apt.status || 'pendente'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      {apt.meet_link ? (
+                        <a
+                          href={apt.meet_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium"
+                        >
+                          Acessar
+                        </a>
+                      ) : (
+                        <span className="text-gray-400">-</span>
                       )}
                     </td>
                   </tr>
