@@ -29,6 +29,7 @@ import webhooksConfigRouter from './routes/webhooksConfig'
 import scheduleRequestsRouter from './routes/scheduleRequests'
 import permissionsRouter from './routes/permissions'
 import whatsappBusinessRouter from './routes/whatsappBusiness'
+import settingsRouter from './routes/settings'
 import { ensureDefaultPermissions, ensureDefaultGroups } from './utils/permissions'
 import { runMigrations } from './utils/migrate'
 
@@ -75,8 +76,8 @@ initializeDatabase()
 
 // Health check
 app.get('/health', (_req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
     socketConnections: io.engine.clientsCount
   })
@@ -105,6 +106,7 @@ app.use('/api/webhooks-config', webhooksConfigRouter)
 app.use('/api/schedule-requests', scheduleRequestsRouter)
 app.use('/api/permissions', permissionsRouter)
 app.use('/api/whatsapp-business', whatsappBusinessRouter)
+app.use('/api/settings', settingsRouter)
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
