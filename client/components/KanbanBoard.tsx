@@ -27,6 +27,7 @@ export interface KanbanUser {
   avatar?: string | null
 }
 
+// Column definitions (IDs must stay stable to match `kanban_step` values in DB)
 const COLUMNS = [
   { id: 0, title: 'Início' },
   { id: 1, title: 'Cadastro' },
@@ -37,6 +38,9 @@ const COLUMNS = [
   { id: 6, title: 'Feedback' },
   { id: 7, title: 'Confirmação' },
 ]
+
+// Visual order: show column IDs in this sequence (keeps numeric IDs unchanged)
+const DISPLAY_ORDER = [0, 2, 1, 3, 4, 5, 6, 7]
 
 export default function KanbanBoard({ onSelect }: { onSelect?: (user: KanbanUser) => void } = {}) {
   const [users, setUsers] = useState<KanbanUser[]>([])
@@ -229,63 +233,64 @@ export default function KanbanBoard({ onSelect }: { onSelect?: (user: KanbanUser
           onDragEnd={handleDragEnd}
         >
           <div className="relative">
-        <div className="p-4 bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 rounded-2xl shadow-inner">
-          {/* Scroll arrows */}
-          <button
-            aria-label="Scroll left"
-            onClick={() => {
-              const c = scrollRef.current
-              if (c) c.scrollBy({ left: -Math.round(c.clientWidth * 0.6), behavior: 'smooth' })
-            }}
-            className="hidden md:flex items-center justify-center absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-800/90 backdrop-blur rounded-full p-2 shadow-md z-20 hover:scale-105 transition-transform"
-          >
-            <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
+            <div className="p-4 bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 rounded-2xl shadow-inner">
+              {/* Scroll arrows */}
+              <button
+                aria-label="Scroll left"
+                onClick={() => {
+                  const c = scrollRef.current
+                  if (c) c.scrollBy({ left: -Math.round(c.clientWidth * 0.6), behavior: 'smooth' })
+                }}
+                className="hidden md:flex items-center justify-center absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-800/90 backdrop-blur rounded-full p-2 shadow-md z-20 hover:scale-105 transition-transform"
+              >
+                <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
 
-          <div ref={scrollRef} className="flex gap-6 overflow-x-auto pb-6 px-4 pr-8 scroll-smooth">
-            {COLUMNS.map((column) => {
-                const columnUsers = users.filter(u => u.kanban_step === column.id)
-                const palette = PALETTES[column.id % PALETTES.length]
-                return (
-                  <SortableContext
-                    key={column.id}
-                    items={columnUsers.map(u => u.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <KanbanColumn
-                      id={column.id.toString()}
-                      title={column.title}
-                      users={columnUsers}
-                      onDeleteUser={handleDeleteUser}
-                      colorPalette={palette}
-                      onSelect={onSelect}
-                    />
-                  </SortableContext>
-                )
-            })}
+              <div ref={scrollRef} className="flex gap-6 overflow-x-auto pb-6 px-4 pr-8 scroll-smooth">
+                {DISPLAY_ORDER.map((colId) => {
+                  const column = COLUMNS.find(c => c.id === colId)!
+                  const columnUsers = users.filter(u => u.kanban_step === column.id)
+                  const palette = PALETTES[column.id % PALETTES.length]
+                  return (
+                    <SortableContext
+                      key={column.id}
+                      items={columnUsers.map(u => u.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <KanbanColumn
+                        id={column.id.toString()}
+                        title={column.title}
+                        users={columnUsers}
+                        onDeleteUser={handleDeleteUser}
+                        colorPalette={palette}
+                        onSelect={onSelect}
+                      />
+                    </SortableContext>
+                  )
+                })}
+              </div>
+
+              <button
+                aria-label="Scroll right"
+                onClick={() => {
+                  const c = scrollRef.current
+                  if (c) c.scrollBy({ left: Math.round(c.clientWidth * 0.6), behavior: 'smooth' })
+                }}
+                className="hidden md:flex items-center justify-center absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-800/90 backdrop-blur rounded-full p-2 shadow-md z-20 hover:scale-105 transition-transform"
+              >
+                <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
           </div>
-
-          <button
-            aria-label="Scroll right"
-            onClick={() => {
-              const c = scrollRef.current
-              if (c) c.scrollBy({ left: Math.round(c.clientWidth * 0.6), behavior: 'smooth' })
-            }}
-            className="hidden md:flex items-center justify-center absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-800/90 backdrop-blur rounded-full p-2 shadow-md z-20 hover:scale-105 transition-transform"
-          >
-            <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-      </div>
 
           <DragOverlay>
             {activeUser && (
               <div className="opacity-50">
-                <KanbanCard user={activeUser} onDelete={() => {}} isDragging />
+                <KanbanCard user={activeUser} onDelete={() => { }} isDragging />
               </div>
             )}
           </DragOverlay>

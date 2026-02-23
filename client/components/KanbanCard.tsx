@@ -4,7 +4,7 @@
 function formatPhoneDisplay(phone: string): string {
   if (!phone) return ''
   const digits = phone.replace(/\D/g, '')
-  
+
   if (digits.startsWith('55') && digits.length >= 12) {
     const ddd = digits.slice(2, 4)
     const rest = digits.slice(4)
@@ -14,7 +14,7 @@ function formatPhoneDisplay(phone: string): string {
       return `(${ddd}) ${rest.slice(0, 4)}-${rest.slice(4)}`
     }
   }
-  
+
   if (digits.length === 11) {
     const ddd = digits.slice(0, 2)
     const rest = digits.slice(2)
@@ -25,7 +25,7 @@ function formatPhoneDisplay(phone: string): string {
     const rest = digits.slice(2)
     return `(${ddd}) ${rest.slice(0, 4)}-${rest.slice(4)}`
   }
-  
+
   return phone
 }
 
@@ -39,13 +39,13 @@ interface Props {
 
 export default function KanbanCard({ user, onDelete, onSelect, isDragging, indicatorClass }: Props) {
   return (
-    <div 
+    <div
       className={`
         bg-white dark:bg-gray-700 rounded-xl shadow-md hover:shadow-lg 
         transition-all duration-200 cursor-pointer overflow-hidden border-l-4 
         border-blue-500 hover:border-blue-600
         ${isDragging ? 'opacity-50 scale-95' : 'hover:scale-102'}
-      `} 
+      `}
       onClick={() => onSelect?.(user)}
     >
       <div className="p-4">
@@ -53,9 +53,9 @@ export default function KanbanCard({ user, onDelete, onSelect, isDragging, indic
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3 flex-1">
             {user.avatar ? (
-              <img 
-                src={user.avatar} 
-                alt={user.name} 
+              <img
+                src={user.avatar}
+                alt={user.name}
                 className="w-12 h-12 rounded-xl object-cover shadow-sm flex-shrink-0"
               />
             ) : (
@@ -81,9 +81,9 @@ export default function KanbanCard({ user, onDelete, onSelect, isDragging, indic
 
           {onDelete && (
             <button
-              onClick={(e) => { 
+              onClick={(e) => {
                 e.stopPropagation()
-                onDelete(user.id) 
+                onDelete(user.id)
               }}
               className="
                 p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 
@@ -92,11 +92,11 @@ export default function KanbanCard({ user, onDelete, onSelect, isDragging, indic
               title="Excluir"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3" 
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3"
                 />
               </svg>
             </button>
@@ -126,7 +126,7 @@ export default function KanbanCard({ user, onDelete, onSelect, isDragging, indic
         {user.createdAt && (
           <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-600">
             <p className="text-xs text-gray-400 dark:text-gray-500">
-              {new Date(user.createdAt).toLocaleDateString('pt-BR')}
+              {user.createdAt}
             </p>
           </div>
         )}

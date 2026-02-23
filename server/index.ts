@@ -1,4 +1,8 @@
 import 'dotenv/config'
+
+// Ensure application timezone is set early (uses TZ env var)
+if (!process.env.TZ) process.env.TZ = 'America/Sao_Paulo'
+console.log('[Startup] Timezone (TZ)=', process.env.TZ)
 import express from 'express'
 import { createServer } from 'http'
 import { Server } from 'socket.io'

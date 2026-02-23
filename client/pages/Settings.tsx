@@ -170,8 +170,7 @@ export default function Settings() {
   const [n8nGreetingPrimary, setN8nGreetingPrimary] = useState('')
   const [n8nGreetingSecondary, setN8nGreetingSecondary] = useState('')
   const [n8nStartRegistration, setN8nStartRegistration] = useState('')
-  const [n8nOperatingHours, setN8nOperatingHours] = useState('')
-  const [n8nAppointmentHours, setN8nAppointmentHours] = useState('')
+
   // days and intervals
   const [n8nOperatingDays, setN8nOperatingDays] = useState<string[]>([])
   const [n8nOperatingIntervals, setN8nOperatingIntervals] = useState<string[]>(['08:00-18:00'])
@@ -179,6 +178,18 @@ export default function Settings() {
   const [n8nAppointmentIntervals, setN8nAppointmentIntervals] = useState<string[]>(['09:00-17:00'])
   const [n8nAssistantTitle, setN8nAssistantTitle] = useState('')
   const [n8nSupportNumber, setN8nSupportNumber] = useState('')
+  // subtabs for n8n
+  const [n8nTab, setN8nTab] = useState<'geral' | 'plataformas' | 'empresas'>('geral')
+  // Plataformas (download links)
+  const [n8nPlatforms, setN8nPlatforms] = useState<{ id: string; platform: 'Android' | 'iPhone' | 'Web'; url: string }[]>([])
+  const [n8nPlatformForm, setN8nPlatformForm] = useState<{ platform: 'Android' | 'iPhone' | 'Web'; url: string }>({ platform: 'Android', url: '' })
+  const [platformModalOpen, setPlatformModalOpen] = useState(false)
+  const [editingPlatform, setEditingPlatform] = useState<{ id: string; platform: 'Android' | 'iPhone' | 'Web'; url: string } | null>(null)
+  // Empresas
+  const [n8nCompanies, setN8nCompanies] = useState<{ id: string; name: string; cnpj: string; activationCode: string }[]>([])
+  const [companyModalOpen, setCompanyModalOpen] = useState(false)
+  const [editingCompany, setEditingCompany] = useState<{ id: string; name: string; cnpj: string; activationCode: string } | null>(null)
+  const [companyForm, setCompanyForm] = useState<{ id: string; name: string; cnpj: string; activationCode: string }>({ id: '', name: '', cnpj: '', activationCode: '' })
   // dropdown / custom interval states
   const [n8nOperatingDaysOpen, setN8nOperatingDaysOpen] = useState(false)
   const [n8nAppointmentDaysOpen, setN8nAppointmentDaysOpen] = useState(false)
@@ -235,6 +246,8 @@ export default function Settings() {
       }
       setN8nAssistantTitle(parsed.n8nAssistantTitle || '')
       setN8nSupportNumber(parsed.n8nSupportNumber || '')
+      setN8nPlatforms(parsed.n8nPlatforms || [])
+      setN8nCompanies(parsed.n8nCompanies || [])
     } else {
       setApiKey(generateApiKey())
     }
@@ -272,6 +285,8 @@ export default function Settings() {
               n8nAppointmentIntervals: server.n8nAppointmentIntervals,
               n8nAssistantTitle: server.n8nAssistantTitle,
               n8nSupportNumber: server.n8nSupportNumber,
+              n8nPlatforms: server.n8nPlatforms || [],
+              n8nCompanies: server.n8nCompanies || [],
             }
             localStorage.setItem('ubva_settings', JSON.stringify(merged))
           } else {
@@ -292,6 +307,8 @@ export default function Settings() {
                   n8nAppointmentIntervals: parsed.n8nAppointmentIntervals,
                   n8nAssistantTitle: parsed.n8nAssistantTitle,
                   n8nSupportNumber: parsed.n8nSupportNumber,
+                  n8nPlatforms: parsed.n8nPlatforms || [],
+                  n8nCompanies: parsed.n8nCompanies || [],
                 })
               })
             }
@@ -421,6 +438,71 @@ export default function Settings() {
         ? prev.events.filter(e => e !== eventId)
         : [...prev.events, eventId]
     }))
+  }
+
+  // ==================== N8N PLATFORMS & COMPANIES HELPERS ====================
+  const addPlatform = () => {
+    if (!n8nPlatformForm.url) return
+    const id = 'pl_' + Math.random().toString(36).substr(2, 9)
+    setN8nPlatforms(prev => [...prev, { id, platform: n8nPlatformForm.platform, url: n8nPlatformForm.url }])
+    setN8nPlatformForm({ platform: 'Android', url: '' })
+  }
+
+  const deletePlatform = (id: string) => {
+    if (!confirm('Excluir este link de plataforma?')) return
+    setN8nPlatforms(prev => prev.filter(p => p.id !== id))
+  }
+
+  const openPlatformModal = (platform?: { id: string; platform: 'Android' | 'iPhone' | 'Web'; url: string }) => {
+    if (platform) {
+      setEditingPlatform(platform)
+      setN8nPlatformForm({ platform: platform.platform, url: platform.url })
+    } else {
+      setEditingPlatform(null)
+      setN8nPlatformForm({ platform: 'Android', url: '' })
+    }
+    setPlatformModalOpen(true)
+  }
+
+  const savePlatform = () => {
+    if (!n8nPlatformForm.url) return
+    if (editingPlatform) {
+      setN8nPlatforms(prev => prev.map(p => p.id === editingPlatform.id ? { ...p, platform: n8nPlatformForm.platform, url: n8nPlatformForm.url } : p))
+    } else {
+      const id = 'pl_' + Math.random().toString(36).substr(2, 9)
+      setN8nPlatforms(prev => [...prev, { id, platform: n8nPlatformForm.platform, url: n8nPlatformForm.url }])
+    }
+    setPlatformModalOpen(false)
+    setEditingPlatform(null)
+    setN8nPlatformForm({ platform: 'Android', url: '' })
+  }
+
+  const openCompanyModal = (company?: { id: string; name: string; cnpj: string; activationCode: string }) => {
+    if (company) {
+      setEditingCompany(company)
+      setCompanyForm({ ...company })
+    } else {
+      setEditingCompany(null)
+      setCompanyForm({ id: '', name: '', cnpj: '', activationCode: '' })
+    }
+    setCompanyModalOpen(true)
+  }
+
+  const saveCompany = () => {
+    const normalized = { ...companyForm, activationCode: companyForm.activationCode.toUpperCase() }
+    if (!normalized.name) return
+    if (editingCompany) {
+      setN8nCompanies(prev => prev.map(c => c.id === normalized.id ? normalized : c))
+    } else {
+      const id = 'co_' + Math.random().toString(36).substr(2, 9)
+      setN8nCompanies(prev => [...prev, { ...normalized, id }])
+    }
+    setCompanyModalOpen(false)
+  }
+
+  const deleteCompany = (id: string) => {
+    if (!confirm('Excluir esta empresa?')) return
+    setN8nCompanies(prev => prev.filter(c => c.id !== id))
   }
 
   // ==================== USER MANAGEMENT ====================
@@ -812,6 +894,8 @@ export default function Settings() {
       n8nAppointmentIntervals,
       n8nAssistantTitle,
       n8nSupportNumber,
+      n8nPlatforms,
+      n8nCompanies,
     }))
       // also persist n8n settings to server
       ; (async () => {
@@ -829,6 +913,8 @@ export default function Settings() {
               n8nAppointmentIntervals,
               n8nAssistantTitle,
               n8nSupportNumber,
+              n8nPlatforms,
+              n8nCompanies,
             })
           })
         } catch (err) {
@@ -2550,227 +2636,421 @@ export default function Settings() {
         {/* ==================== TAB: N8N ==================== */}
         {activeTab === 'n8n' && (
           <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Configurações n8n (Padrões)</h3>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setN8nTab('geral')} className={`px-4 py-2 rounded-xl ${n8nTab === 'geral' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>Geral</button>
+              <button onClick={() => setN8nTab('plataformas')} className={`px-4 py-2 rounded-xl ${n8nTab === 'plataformas' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>Plataformas</button>
+              <button onClick={() => setN8nTab('empresas')} className={`px-4 py-2 rounded-xl ${n8nTab === 'empresas' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>Empresas</button>
+            </div>
 
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Mensagem de Saudação Principal</label>
-                  <textarea
-                    value={n8nGreetingPrimary}
-                    onChange={e => setN8nGreetingPrimary(e.target.value)}
-                    rows={3}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white resize-none"
-                  />
-                </div>
+            {n8nTab === 'geral' && (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Configurações n8n (Padrões)</h3>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Mensagem de Saudação Secundária</label>
-                  <textarea
-                    value={n8nGreetingSecondary}
-                    onChange={e => setN8nGreetingSecondary(e.target.value)}
-                    rows={2}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white resize-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Mensagem de Início de Cadastro</label>
-                  <textarea
-                    value={n8nStartRegistration}
-                    onChange={e => setN8nStartRegistration(e.target.value)}
-                    rows={3}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white resize-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Dias de Funcionamento</label>
-                  <div className="relative">
-                    <button
-                      onClick={() => setN8nOperatingDaysOpen(prev => !prev)}
-                      className="w-full text-left px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                    >
-                      {n8nOperatingDays.length === 0 ? 'Selecionar dias...' : n8nOperatingDays.map(d => ({ Mon: 'Seg', Tue: 'Ter', Wed: 'Qua', Thu: 'Qui', Fri: 'Sex', Sat: 'Sáb', Sun: 'Dom' } as any)[d]).join(', ')}
-                    </button>
-                    {n8nOperatingDaysOpen && (
-                      <div className="absolute z-20 mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 shadow-lg">
-                        {[
-                          ['Mon', 'Seg'],
-                          ['Tue', 'Ter'],
-                          ['Wed', 'Qua'],
-                          ['Thu', 'Qui'],
-                          ['Fri', 'Sex'],
-                          ['Sat', 'Sáb'],
-                          ['Sun', 'Dom'],
-                        ].map(d => (
-                          <label key={d[0]} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={n8nOperatingDays.includes(d[0])}
-                              onChange={() => setN8nOperatingDays(prev => prev.includes(d[0]) ? prev.filter(x => x !== d[0]) : [...prev, d[0]])}
-                              className="w-4 h-4"
-                            />
-                            <span className="text-sm text-gray-700 dark:text-gray-300">{d[1]}</span>
-                          </label>
-                        ))}
-                        <div className="flex justify-end mt-2">
-                          <button onClick={() => setN8nOperatingDaysOpen(false)} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded">Fechar</button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-3">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Intervalos de Horário</label>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {n8nOperatingIntervals.map(interval => (
-                        <span key={interval} className="flex items-center gap-2 px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-sm">
-                          <span>{interval}</span>
-                          <button onClick={() => setN8nOperatingIntervals(prev => prev.filter(i => i !== interval))} className="text-sm text-red-500">✕</button>
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 items-end">
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">Início</label>
-                        <input
-                          type="time"
-                          value={n8nNewOperatingFrom}
-                          onChange={e => {
-                            const from = e.target.value
-                            setN8nNewOperatingFrom(from)
-                            if (from < n8nNewOperatingTo) setN8nOperatingIntervals([`${from}-${n8nNewOperatingTo}`])
-                          }}
-                          className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">Término</label>
-                        <input
-                          type="time"
-                          value={n8nNewOperatingTo}
-                          onChange={e => {
-                            const to = e.target.value
-                            setN8nNewOperatingTo(to)
-                            if (n8nNewOperatingFrom < to) setN8nOperatingIntervals([`${n8nNewOperatingFrom}-${to}`])
-                          }}
-                          className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                        />
-                      </div>
-                      <div className="col-span-2" />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Dias para Agendamentos</label>
-                  <div className="relative">
-                    <button
-                      onClick={() => setN8nAppointmentDaysOpen(prev => !prev)}
-                      className="w-full text-left px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                    >
-                      {n8nAppointmentDays.length === 0 ? 'Selecionar dias...' : n8nAppointmentDays.map(d => ({ Mon: 'Seg', Tue: 'Ter', Wed: 'Qua', Thu: 'Qui', Fri: 'Sex', Sat: 'Sáb', Sun: 'Dom' } as any)[d]).join(', ')}
-                    </button>
-                    {n8nAppointmentDaysOpen && (
-                      <div className="absolute z-20 mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 shadow-lg">
-                        {[
-                          ['Mon', 'Seg'],
-                          ['Tue', 'Ter'],
-                          ['Wed', 'Qua'],
-                          ['Thu', 'Qui'],
-                          ['Fri', 'Sex'],
-                          ['Sat', 'Sáb'],
-                          ['Sun', 'Dom'],
-                        ].map(d => (
-                          <label key={d[0]} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={n8nAppointmentDays.includes(d[0])}
-                              onChange={() => setN8nAppointmentDays(prev => prev.includes(d[0]) ? prev.filter(x => x !== d[0]) : [...prev, d[0]])}
-                              className="w-4 h-4"
-                            />
-                            <span className="text-sm text-gray-700 dark:text-gray-300">{d[1]}</span>
-                          </label>
-                        ))}
-                        <div className="flex justify-end mt-2">
-                          <button onClick={() => setN8nAppointmentDaysOpen(false)} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded">Fechar</button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-3">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Intervalos de Agendamento</label>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {n8nAppointmentIntervals.map(interval => (
-                        <span key={interval} className="flex items-center gap-2 px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-sm">
-                          <span>{interval}</span>
-                          <button onClick={() => setN8nAppointmentIntervals(prev => prev.filter(i => i !== interval))} className="text-sm text-red-500">✕</button>
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 items-end">
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">Início</label>
-                        <input
-                          type="time"
-                          value={n8nNewAppointmentFrom}
-                          onChange={e => {
-                            const from = e.target.value
-                            setN8nNewAppointmentFrom(from)
-                            if (from < n8nNewAppointmentTo) setN8nAppointmentIntervals([`${from}-${n8nNewAppointmentTo}`])
-                          }}
-                          className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">Término</label>
-                        <input
-                          type="time"
-                          value={n8nNewAppointmentTo}
-                          onChange={e => {
-                            const to = e.target.value
-                            setN8nNewAppointmentTo(to)
-                            if (n8nNewAppointmentFrom < to) setN8nAppointmentIntervals([`${n8nNewAppointmentFrom}-${to}`])
-                          }}
-                          className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                        />
-                      </div>
-                      <div className="col-span-2" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Título do Assistente</label>
-                    <input
-                      type="text"
-                      value={n8nAssistantTitle}
-                      onChange={e => setN8nAssistantTitle(e.target.value)}
-                      placeholder="Assistente Webglass"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Mensagem de Saudação Principal</label>
+                    <textarea
+                      value={n8nGreetingPrimary}
+                      onChange={e => setN8nGreetingPrimary(e.target.value)}
+                      rows={3}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white resize-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Número do Suporte</label>
-                    <input
-                      type="tel"
-                      value={n8nSupportNumber}
-                      onChange={e => setN8nSupportNumber(e.target.value)}
-                      placeholder="+55 11 90000-0000"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Mensagem de Saudação Secundária</label>
+                    <textarea
+                      value={n8nGreetingSecondary}
+                      onChange={e => setN8nGreetingSecondary(e.target.value)}
+                      rows={2}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white resize-none"
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Mensagem de Início de Cadastro</label>
+                    <textarea
+                      value={n8nStartRegistration}
+                      onChange={e => setN8nStartRegistration(e.target.value)}
+                      rows={3}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Dias de Funcionamento</label>
+                    <div className="relative">
+                      <button
+                        onClick={() => setN8nOperatingDaysOpen(prev => !prev)}
+                        className="w-full text-left px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                      >
+                        {n8nOperatingDays.length === 0 ? 'Selecionar dias...' : n8nOperatingDays.map(d => ({ Mon: 'Seg', Tue: 'Ter', Wed: 'Qua', Thu: 'Qui', Fri: 'Sex', Sat: 'Sáb', Sun: 'Dom' } as any)[d]).join(', ')}
+                      </button>
+                      {n8nOperatingDaysOpen && (
+                        <div className="absolute z-20 mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 shadow-lg">
+                          {[
+                            ['Mon', 'Seg'],
+                            ['Tue', 'Ter'],
+                            ['Wed', 'Qua'],
+                            ['Thu', 'Qui'],
+                            ['Fri', 'Sex'],
+                            ['Sat', 'Sáb'],
+                            ['Sun', 'Dom'],
+                          ].map(d => (
+                            <label key={d[0]} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={n8nOperatingDays.includes(d[0])}
+                                onChange={() => setN8nOperatingDays(prev => prev.includes(d[0]) ? prev.filter(x => x !== d[0]) : [...prev, d[0]])}
+                                className="w-4 h-4"
+                              />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">{d[1]}</span>
+                            </label>
+                          ))}
+                          <div className="flex justify-end mt-2">
+                            <button onClick={() => setN8nOperatingDaysOpen(false)} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded">Fechar</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-3">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Intervalos de Horário</label>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {n8nOperatingIntervals.map(interval => (
+                          <span key={interval} className="flex items-center gap-2 px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-sm">
+                            <span>{interval}</span>
+                            <button onClick={() => setN8nOperatingIntervals(prev => prev.filter(i => i !== interval))} className="text-sm text-red-500">✕</button>
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 items-end">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Início</label>
+                          <input
+                            type="time"
+                            value={n8nNewOperatingFrom}
+                            onChange={e => {
+                              const from = e.target.value
+                              setN8nNewOperatingFrom(from)
+                              if (from < n8nNewOperatingTo) setN8nOperatingIntervals([`${from}-${n8nNewOperatingTo}`])
+                            }}
+                            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Término</label>
+                          <input
+                            type="time"
+                            value={n8nNewOperatingTo}
+                            onChange={e => {
+                              const to = e.target.value
+                              setN8nNewOperatingTo(to)
+                              if (n8nNewOperatingFrom < to) setN8nOperatingIntervals([`${n8nNewOperatingFrom}-${to}`])
+                            }}
+                            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                          />
+                        </div>
+                        <div className="col-span-2" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Dias para Agendamentos</label>
+                    <div className="relative">
+                      <button
+                        onClick={() => setN8nAppointmentDaysOpen(prev => !prev)}
+                        className="w-full text-left px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                      >
+                        {n8nAppointmentDays.length === 0 ? 'Selecionar dias...' : n8nAppointmentDays.map(d => ({ Mon: 'Seg', Tue: 'Ter', Wed: 'Qua', Thu: 'Qui', Fri: 'Sex', Sat: 'Sáb', Sun: 'Dom' } as any)[d]).join(', ')}
+                      </button>
+                      {n8nAppointmentDaysOpen && (
+                        <div className="absolute z-20 mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 shadow-lg">
+                          {[
+                            ['Mon', 'Seg'],
+                            ['Tue', 'Ter'],
+                            ['Wed', 'Qua'],
+                            ['Thu', 'Qui'],
+                            ['Fri', 'Sex'],
+                            ['Sat', 'Sáb'],
+                            ['Sun', 'Dom'],
+                          ].map(d => (
+                            <label key={d[0]} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={n8nAppointmentDays.includes(d[0])}
+                                onChange={() => setN8nAppointmentDays(prev => prev.includes(d[0]) ? prev.filter(x => x !== d[0]) : [...prev, d[0]])}
+                                className="w-4 h-4"
+                              />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">{d[1]}</span>
+                            </label>
+                          ))}
+                          <div className="flex justify-end mt-2">
+                            <button onClick={() => setN8nAppointmentDaysOpen(false)} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded">Fechar</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-3">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Intervalos de Agendamento</label>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {n8nAppointmentIntervals.map(interval => (
+                          <span key={interval} className="flex items-center gap-2 px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-sm">
+                            <span>{interval}</span>
+                            <button onClick={() => setN8nAppointmentIntervals(prev => prev.filter(i => i !== interval))} className="text-sm text-red-500">✕</button>
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 items-end">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Início</label>
+                          <input
+                            type="time"
+                            value={n8nNewAppointmentFrom}
+                            onChange={e => {
+                              const from = e.target.value
+                              setN8nNewAppointmentFrom(from)
+                              if (from < n8nNewAppointmentTo) setN8nAppointmentIntervals([`${from}-${n8nNewAppointmentTo}`])
+                            }}
+                            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Término</label>
+                          <input
+                            type="time"
+                            value={n8nNewAppointmentTo}
+                            onChange={e => {
+                              const to = e.target.value
+                              setN8nNewAppointmentTo(to)
+                              if (n8nNewAppointmentFrom < to) setN8nAppointmentIntervals([`${n8nNewAppointmentFrom}-${to}`])
+                            }}
+                            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                          />
+                        </div>
+                        <div className="col-span-2" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Título do Assistente</label>
+                      <input
+                        type="text"
+                        value={n8nAssistantTitle}
+                        onChange={e => setN8nAssistantTitle(e.target.value)}
+                        placeholder="Assistente Webglass"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Número do Suporte</label>
+                      <input
+                        type="tel"
+                        value={n8nSupportNumber}
+                        onChange={e => setN8nSupportNumber(e.target.value)}
+                        placeholder="+55 11 90000-0000"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">Os valores aqui são usados como padrões para os fluxos do n8n.</p>
+              </div>
+            )}
+
+            {n8nTab === 'plataformas' && (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Plataformas - Links de Download</h3>
+
+                <div className="space-y-4">
+                  {n8nPlatforms.length === 0 ? (
+                    <div className="text-sm text-gray-500">Nenhum link cadastrado.</div>
+                  ) : (
+                    <div className="grid gap-3">
+                      {n8nPlatforms.map(p => (
+                        <div key={p.id} className="w-full p-4 border rounded-xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{p.platform}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-2 break-words">{p.url}</div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <a href={p.url} target="_blank" rel="noreferrer" className="px-3 py-1 bg-white text-blue-600 rounded-lg border border-blue-100 hover:bg-blue-50 dark:bg-gray-900 dark:border-blue-800 dark:hover:bg-blue-900/50 flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 3h7v7m0-7L10 14" />
+                                </svg>
+                                <span className="text-sm">Abrir</span>
+                              </a>
+                              <button onClick={() => openPlatformModal(p)} className="px-3 py-1 bg-white text-gray-700 rounded-lg border border-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:border-gray-700 dark:hover:bg-gray-800 flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                <span className="text-sm">Editar</span>
+                              </button>
+                              <button onClick={() => deletePlatform(p.id)} className="px-3 py-1 bg-white text-red-600 rounded-lg border border-red-100 hover:bg-red-50 dark:bg-gray-900 dark:border-red-800 dark:hover:bg-red-900/50 flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3" />
+                                </svg>
+                                <span className="text-sm">Excluir</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">Plataforma</label>
+                      <select value={n8nPlatformForm.platform} onChange={e => setN8nPlatformForm({ ...n8nPlatformForm, platform: e.target.value as any })} className="w-full px-3 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm">
+                        <option value="Android">Android</option>
+                        <option value="iPhone">iPhone</option>
+                        <option value="Web">Web</option>
+                      </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm text-gray-600 mb-1">URL de Download</label>
+                      <div className="flex gap-2">
+                        <input value={n8nPlatformForm.url} onChange={e => setN8nPlatformForm({ ...n8nPlatformForm, url: e.target.value })} placeholder="https://download.exemplo" className="flex-1 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500" />
+                        <button onClick={addPlatform} className="px-4 py-2 bg-green-500 text-white rounded-xl flex items-center gap-2 hover:bg-green-600">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          Adicionar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Platform Modal */}
+                  {platformModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setPlatformModalOpen(false)} />
+                      <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md">
+                        <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{editingPlatform ? 'Editar Plataforma' : 'Nova Plataforma'}</h3>
+                          <button onClick={() => setPlatformModalOpen(false)} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                            <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Plataforma</label>
+                            <select value={n8nPlatformForm.platform} onChange={e => setN8nPlatformForm({ ...n8nPlatformForm, platform: e.target.value as any })} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
+                              <option value="Android">Android</option>
+                              <option value="iPhone">iPhone</option>
+                              <option value="Web">Web</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">URL de Download</label>
+                            <input value={n8nPlatformForm.url} onChange={e => setN8nPlatformForm({ ...n8nPlatformForm, url: e.target.value })} placeholder="https://download.exemplo" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white" />
+                          </div>
+                        </div>
+
+                        <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-end gap-3">
+                          <button onClick={() => setPlatformModalOpen(false)} className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl">Cancelar</button>
+                          <button onClick={savePlatform} className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl">{editingPlatform ? 'Salvar' : 'Criar'}</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
+            )}
 
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">Os valores aqui são usados como padrões para os fluxos do n8n.</p>
-            </div>
+            {n8nTab === 'empresas' && (
+              <div className="space-y-4">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Empresas</h3>
+                    <button onClick={() => openCompanyModal()} className="px-4 py-2 bg-blue-500 text-white rounded-xl">Nova Empresa</button>
+                  </div>
+
+                  {n8nCompanies.length === 0 ? (
+                    <div className="text-sm text-gray-500">Nenhuma empresa cadastrada.</div>
+                  ) : (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {n8nCompanies.map(c => (
+                        <div key={c.id} className="p-5 border border-gray-200 dark:border-gray-700 rounded-2xl bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition">
+                          <div className="flex gap-4 items-center">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-gray-900 dark:text-white text-sm md:text-base leading-tight truncate">{c.name}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">CNPJ: <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{c.cnpj}</span></div>
+                              <div className="mt-3">
+                                <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-900/30 text-xs font-mono text-gray-700 dark:text-gray-300 rounded">Código: {c.activationCode}</span>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                              <button onClick={() => openCompanyModal(c)} className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 hover:bg-blue-100 flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Editar
+                              </button>
+                              <button onClick={() => deleteCompany(c.id)} className="px-3 py-1 bg-red-50 text-red-600 rounded-lg border border-red-100 hover:bg-red-100 flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3" />
+                                </svg>
+                                Excluir
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Company Modal */}
+                {companyModalOpen && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setCompanyModalOpen(false)} />
+                    <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md">
+                      <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{editingCompany ? 'Editar Empresa' : 'Nova Empresa'}</h3>
+                        <button onClick={() => setCompanyModalOpen(false)} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                          <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      <div className="p-6 space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nome</label>
+                          <input value={companyForm.name} onChange={e => setCompanyForm({ ...companyForm, name: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">CNPJ</label>
+                          <input value={companyForm.cnpj} onChange={e => setCompanyForm({ ...companyForm, cnpj: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Código de Ativação</label>
+                          <input value={companyForm.activationCode} onChange={e => setCompanyForm({ ...companyForm, activationCode: e.target.value.toUpperCase() })} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 font-mono" />
+                        </div>
+                      </div>
+
+                      <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-end gap-3">
+                        <button onClick={() => setCompanyModalOpen(false)} className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl">Cancelar</button>
+                        <button onClick={saveCompany} className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl">{editingCompany ? 'Salvar' : 'Criar'}</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

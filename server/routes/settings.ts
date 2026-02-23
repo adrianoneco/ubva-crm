@@ -13,7 +13,7 @@ const pool = new Pool({
 })
 
 // Helper: read setting by key
-router.get('/n8n', async (req, res) => {
+router.get('/n8n', async (_req, res) => {
     try {
         const result = await pool.query(`SELECT value FROM app_settings WHERE key = $1`, ['n8n'])
         if (result.rowCount === 0) return res.json({})

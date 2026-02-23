@@ -4,7 +4,7 @@
   "description": "CRM application with React, Vite, TypeScript, TailwindCSS, Drizzle ORM, Express, and Socket.io",
   "type": "module",
   "scripts": {
-    "dev": "dotenv -e .env -- concurrently --names \"CLIENT,SERVER\" \"bun run client\" \"bun run server:watch\"",
+    "dev": "TZ=America/Sao_Paulo dotenv -e .env -- concurrently --names \"CLIENT,SERVER\" \"bun run client\" \"bun run server:watch\"",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "client": "vite --host",

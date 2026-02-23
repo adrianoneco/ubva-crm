@@ -8,7 +8,7 @@ function formatPhoneDisplay(phone: string): string {
   if (!phone) return ''
   // Remove all non-numeric characters
   const digits = phone.replace(/\D/g, '')
-  
+
   // Brazilian number with country code (55)
   if (digits.startsWith('55') && digits.length >= 12) {
     const ddd = digits.slice(2, 4)
@@ -21,7 +21,7 @@ function formatPhoneDisplay(phone: string): string {
       return `(${ddd}) ${rest.slice(0, 4)}-${rest.slice(4)}`
     }
   }
-  
+
   // Without country code but with DDD
   if (digits.length === 11) {
     const ddd = digits.slice(0, 2)
@@ -33,7 +33,7 @@ function formatPhoneDisplay(phone: string): string {
     const rest = digits.slice(2)
     return `(${ddd}) ${rest.slice(0, 4)}-${rest.slice(4)}`
   }
-  
+
   return phone
 }
 
@@ -41,7 +41,7 @@ function formatPhoneDisplay(phone: string): string {
 function formatPhoneInput(value: string): { display: string; raw: string } {
   const digits = value.replace(/\D/g, '')
   let display = ''
-  
+
   if (digits.length <= 2) {
     display = digits
   } else if (digits.length <= 4) {
@@ -63,7 +63,7 @@ function formatPhoneInput(value: string): { display: string; raw: string } {
       display = `+${cc} (${ddd}) ${rest[0]} ${rest.slice(1, 5)}-${rest.slice(5, 9)}`
     }
   }
-  
+
   return { display, raw: digits }
 }
 
@@ -134,11 +134,11 @@ export default function WebGlass() {
 
     // Socket.io connection - connect to same origin to use Vite proxy
     const socketUrl = `${window.location.protocol}//${window.location.host}`
-    const newSocket = io(socketUrl, { 
+    const newSocket = io(socketUrl, {
       path: '/socket.io',
       transports: ['polling', 'websocket']
     })
-    
+
     newSocket.on('connect', () => {
       console.log('[WebGlass] ✅ Socket connected:', newSocket.id)
     })
@@ -162,7 +162,7 @@ export default function WebGlass() {
       if (phone.length <= 11 && !phone.startsWith('55')) {
         phone = '55' + phone
       }
-      
+
       const response = await fetch('/api/kanban', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -189,7 +189,7 @@ export default function WebGlass() {
       if (phone.length <= 11 && !phone.startsWith('55')) {
         phone = '55' + phone
       }
-      
+
       const response = await fetch(`/api/kanban/${editingUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -279,226 +279,219 @@ export default function WebGlass() {
         </div>
 
         {/* Kanban Board */}
-            {/* Kanban Board with Horizontal Scroll */}
-            <div className="relative overflow-hidden rounded-lg w-full md:w-[calc(100vw-16rem-4rem)]" style={{ height: 'calc(100vh - 280px)' }}>
-              <div 
-                className="flex gap-4 h-full overflow-x-auto overflow-y-hidden pb-4 pr-8" 
-                style={{ 
-                  maxHeight: 'calc(100vh - 280px)'
+        {/* Kanban Board with Horizontal Scroll */}
+        <div className="relative overflow-hidden rounded-lg w-full md:w-[calc(100vw-16rem-4rem)]" style={{ height: 'calc(100vh - 280px)' }}>
+          <div
+            className="flex gap-4 h-full overflow-x-auto overflow-y-hidden pb-4 pr-8"
+            style={{
+              maxHeight: 'calc(100vh - 280px)'
+            }}
+          >
+            {KANBAN_STEPS.map(step => (
+              <div
+                key={step.id}
+                className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 flex flex-col w-80 flex-shrink-0"
+                style={{
+                  height: 'calc(100% - 16px)'
                 }}
               >
-              {KANBAN_STEPS.map(step => (
-                <div
-                  key={step.id}
-                  className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 flex flex-col w-80 flex-shrink-0"
-                  style={{ 
-                    height: 'calc(100% - 16px)'
-                  }}
-                >
-              <div className="flex items-center justify-between mb-4 flex-shrink-0">
-                <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${step.color}`}></div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white">{step.name}</h3>
+                <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${step.color}`}></div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">{step.name}</h3>
+                  </div>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-700 px-2 py-1 rounded-full">
+                    {getUsersByStep(step.id).length}
+                  </span>
                 </div>
-                <span className="text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-700 px-2 py-1 rounded-full">
-                  {getUsersByStep(step.id).length}
-                </span>
-              </div>
 
-                  <div className="space-y-3 overflow-y-auto flex-1 scrollbar-hide">
-                {getUsersByStep(step.id).map(user => (
-                  <div
-                    key={user.id}
-                    className="bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer group relative"
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData('userId', user.id)
-                      e.dataTransfer.setData('currentStep', String(user.kanbanStep))
-                    }}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => {
-                      e.preventDefault()
-                      const draggedUserId = e.dataTransfer.getData('userId')
-                      if (draggedUserId !== user.id) {
-                        moveUser(draggedUserId, step.id)
-                      }
-                    }}
-                  >
-                    {user.agendamentoId && user.appointmentDateTime && (
-                      <div className="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full p-1.5 shadow-lg" title={`Agendamento: ${new Date(user.appointmentDateTime).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`}>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                    )}
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3 flex-1">
-                        {user.avatar ? (
-                          <img
-                            src={user.avatar}
-                            alt={user.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
-                            {user.name.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 dark:text-white truncate">
-                            {user.name}
-                          </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                            {formatPhoneDisplay(user.phone)}
-                          </p>
-                          {user.email && (
-                            <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
-                              {user.email}
+                <div className="space-y-3 overflow-y-auto flex-1 scrollbar-hide">
+                  {getUsersByStep(step.id).map(user => (
+                    <div
+                      key={user.id}
+                      className="bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer group relative"
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('userId', user.id)
+                        e.dataTransfer.setData('currentStep', String(user.kanbanStep))
+                      }}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault()
+                        const draggedUserId = e.dataTransfer.getData('userId')
+                        if (draggedUserId !== user.id) {
+                          moveUser(draggedUserId, step.id)
+                        }
+                      }}
+                    >
+                      {user.agendamentoId && user.appointmentDateTime && (
+                        <div className="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full p-1.5 shadow-lg" title={`Agendamento: ${user.appointmentDateTime}`}>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                      )}
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                          {user.avatar ? (
+                            <img
+                              src={user.avatar}
+                              alt={user.name}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
+                              {user.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 dark:text-white truncate">
+                              {user.name}
                             </p>
-                          )}
-                          {user.role && (
-                            <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
-                              {user.role}
-                            </span>
-                          )}
-                          {user.agendamentoId && user.appointmentDateTime && (() => {
-                            const dateTimeStr = typeof user.appointmentDateTime === 'string' ? user.appointmentDateTime : new Date(user.appointmentDateTime).toISOString()
-                            const [datepart, timepart] = dateTimeStr.split('T')
-                            const [, month, day] = datepart.split('-')
-                            const time = timepart.split(':').slice(0, 2).join(':')
-                            return (
-                              <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
-                                <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                  </svg>
-                                  <span className="font-medium">{day}/{month}</span>
-                                  <span className="mx-1">•</span>
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                  <span className="font-medium">{time}</span>
-                                  {user.meet_link && typeof user.meet_link === 'string' && user.meet_link.startsWith('https://meet.google.com/') && (
-                                    <div className="ml-2 inline-flex items-center gap-1 relative">
-                                      <a
-                                        href={user.meet_link}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded"
-                                        title="Abrir reunião Google Meet"
-                                      >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
-                                          <path d="M21.8 7.6c-.2-.4-.5-.8-.9-1-1.7-1-6.2-1.6-9.9-1.6S2.9 5.6 1.2 6.6c-.4.2-.7.6-.9 1-.2.4-.1.9.1 1.3l2.2 3.7c.3.5.8.8 1.4.8h11.2c.6 0 1.1-.3 1.4-.8l2.2-3.7c.3-.4.3-.9.1-1.3zM5.4 9.8c-.7 0-1.3-.6-1.3-1.3S4.7 7.2 5.4 7.2 6.7 7.8 6.7 8.5 6.1 9.8 5.4 9.8z" />
-                                        </svg>
-                                        Meet
-                                      </a>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                              {formatPhoneDisplay(user.phone)}
+                            </p>
+                            {user.email && (
+                              <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                                {user.email}
+                              </p>
+                            )}
+                            {user.role && (
+                              <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
+                                {user.role}
+                              </span>
+                            )}
+                            {user.agendamentoId && user.appointmentDateTime && (() => {
+                              // Do not manipulate dates on the frontend — display server-provided value
+                              const display = (user as any).appointmentDateTimeDisplay || user.appointmentDateTime || ''
+                              return (
+                                <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                                  <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span className="font-medium">{display}</span>
+                                    {user.meet_link && typeof user.meet_link === 'string' && user.meet_link.startsWith('https://meet.google.com/') && (
+                                      <div className="ml-2 inline-flex items-center gap-1 relative">
+                                        <a
+                                          href={user.meet_link}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded"
+                                          title="Abrir reunião Google Meet"
+                                        >
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M21.8 7.6c-.2-.4-.5-.8-.9-1-1.7-1-6.2-1.6-9.9-1.6S2.9 5.6 1.2 6.6c-.4.2-.7.6-.9 1-.2.4-.1.9.1 1.3l2.2 3.7c.3.5.8.8 1.4.8h11.2c.6 0 1.1-.3 1.4-.8l2.2-3.7c.3-.4.3-.9.1-1.3zM5.4 9.8c-.7 0-1.3-.6-1.3-1.3S4.7 7.2 5.4 7.2 6.7 7.8 6.7 8.5 6.1 9.8 5.4 9.8z" />
+                                          </svg>
+                                          Meet
+                                        </a>
 
-                                      {user.feedback && String(user.feedback).trim().length > 0 && (
-                                        <>
-                                          <button
-                                            onClick={(e) => { e.stopPropagation(); setOpenFeedbackId(openFeedbackId === user.id ? null : user.id) }}
-                                            className="ml-2 inline-flex items-center p-1 text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-900/20 rounded"
-                                            title="Ver feedback"
-                                          >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.84L3 20l1.16-4.25A7.72 7.72 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                            </svg>
-                                          </button>
+                                        {user.feedback && String(user.feedback).trim().length > 0 && (
+                                          <>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); setOpenFeedbackId(openFeedbackId === user.id ? null : user.id) }}
+                                              className="ml-2 inline-flex items-center p-1 text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-900/20 rounded"
+                                              title="Ver feedback"
+                                            >
+                                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.84L3 20l1.16-4.25A7.72 7.72 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                              </svg>
+                                            </button>
 
-                                          {openFeedbackId === user.id && (
-                                            <div className="absolute right-0 z-50 bottom-full mb-3 w-64 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-                                              <button
-                                                onClick={(e) => { e.stopPropagation(); setOpenFeedbackId(null) }}
-                                                aria-label="Fechar"
-                                                className="absolute top-1 right-1 p-1 rounded text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
-                                              >
-                                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                              </button>
-                                              <div className="absolute -bottom-2 right-4 w-3 h-3 bg-white dark:bg-gray-800 rotate-45 translate-x-1"></div>
-                                              <div className="pr-6">{String(user.feedback)}</div>
-                                            </div>
-                                          )}
-                                        </>
-                                      )}
-                                    </div>
-                                  )}
+                                            {openFeedbackId === user.id && (
+                                              <div className="absolute right-0 z-50 bottom-full mb-3 w-64 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                                                <button
+                                                  onClick={(e) => { e.stopPropagation(); setOpenFeedbackId(null) }}
+                                                  aria-label="Fechar"
+                                                  className="absolute top-1 right-1 p-1 rounded text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                                                >
+                                                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                  </svg>
+                                                </button>
+                                                <div className="absolute -bottom-2 right-4 w-3 h-3 bg-white dark:bg-gray-800 rotate-45 translate-x-1"></div>
+                                                <div className="pr-6">{String(user.feedback)}</div>
+                                              </div>
+                                            )}
+                                          </>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            )
-                          })()}
+                              )
+                            })()}
+                          </div>
+                        </div>
+
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {canEdit('leads') && (
+                            <button
+                              onClick={() => openEditModal(user)}
+                              className="p-1 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded"
+                              title="Editar"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                          )}
+                          {canDelete('leads') && (
+                            <button
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
+                              title="Excluir"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       </div>
 
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {canEdit('leads') && (
-                          <button
-                            onClick={() => openEditModal(user)}
-                            className="p-1 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded"
-                            title="Editar"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                        )}
-                        {canDelete('leads') && (
-                          <button
-                            onClick={() => handleDeleteUser(user.id)}
-                            className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
-                            title="Excluir"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
+                      {/* Move buttons */}
+                      {(step.id > 0 || step.id < KANBAN_STEPS.length - 1) && (
+                        <div className="flex mt-3 pt-3 border-t border-gray-200 dark:border-gray-600 gap-2">
+                          {step.id > 0 && (
+                            <button
+                              onClick={() => moveUser(user.id, step.id - 1)}
+                              className="flex-1 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 rounded text-gray-700 dark:text-gray-200"
+                            >
+                              ← Anterior
+                            </button>
+                          )}
+
+                          {step.id < KANBAN_STEPS.length - 1 && (
+                            <button
+                              onClick={() => moveUser(user.id, step.id + 1)}
+                              className="flex-1 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 rounded text-gray-700 dark:text-gray-200"
+                            >
+                              Próximo →
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
+                  ))}
 
-                    {/* Move buttons */}
-                    {(step.id > 0 || step.id < KANBAN_STEPS.length - 1) && (
-                      <div className="flex mt-3 pt-3 border-t border-gray-200 dark:border-gray-600 gap-2">
-                        {step.id > 0 && (
-                          <button
-                            onClick={() => moveUser(user.id, step.id - 1)}
-                            className="flex-1 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 rounded text-gray-700 dark:text-gray-200"
-                          >
-                            ← Anterior
-                          </button>
-                        )}
-
-                        {step.id < KANBAN_STEPS.length - 1 && (
-                          <button
-                            onClick={() => moveUser(user.id, step.id + 1)}
-                            className="flex-1 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 rounded text-gray-700 dark:text-gray-200"
-                          >
-                            Próximo →
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {/* Drop zone - always visible */}
-                <div
-                  className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center text-gray-400 dark:text-gray-500 min-h-[100px] flex items-center justify-center"
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault()
-                    const userId = e.dataTransfer.getData('userId')
-                    moveUser(userId, step.id)
-                  }}
-                >
-                  Arraste um cliente aqui
-                </div>
+                  {/* Drop zone - always visible */}
+                  <div
+                    className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center text-gray-400 dark:text-gray-500 min-h-[100px] flex items-center justify-center"
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      const userId = e.dataTransfer.getData('userId')
+                      moveUser(userId, step.id)
+                    }}
+                  >
+                    Arraste um cliente aqui
                   </div>
                 </div>
-              ))}
               </div>
-            </div>
+            ))}
+          </div>
+        </div>
 
       </div>
 

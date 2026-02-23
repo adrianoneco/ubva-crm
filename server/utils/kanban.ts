@@ -19,12 +19,47 @@ export async function getKanbanUsers() {
       agendamentoId: webglassBot.agendamentoId,
       appointmentDateTime: appointments.date_time,
       meet_link: appointments.meet_link,
+      appointmentStatus: appointments.status,
     })
     .from(webglassBot)
     .leftJoin(appointments, eq(webglassBot.agendamentoId, appointments.id))
     .orderBy(webglassBot.kanbanStep)
-  
-  return users
+
+  // Format a display string for appointment date/time in São Paulo TZ
+  const formatter = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false
+  })
+
+  const mapped = users.map((u: any) => {
+    const out: any = { ...u }
+    if (u.appointmentDateTime) {
+      try {
+        const dt = new Date(u.appointmentDateTime)
+        const parts = formatter.formatToParts(dt)
+        const day = parts.find(p => p.type === 'day')?.value || ''
+        const month = parts.find(p => p.type === 'month')?.value || ''
+        const hour = parts.find(p => p.type === 'hour')?.value || ''
+        const minute = parts.find(p => p.type === 'minute')?.value || ''
+        out.appointmentDateTimeDisplay = `${day}/${month} • ${hour}:${minute}`
+      } catch (e) {
+        out.appointmentDateTimeDisplay = String(u.appointmentDateTime)
+      }
+    }
+
+    // Include nested appointment object for other consumers
+    if (u.appointmentDateTime || u.meet_link || u.appointmentStatus) {
+      out.appointment = {
+        date_time: u.appointmentDateTime,
+        meet_link: u.meet_link,
+        status: u.appointmentStatus || null,
+      }
+    }
+
+    return out
+  })
+
+  return mapped
 }
 
 export async function createKanbanUser(data: {
