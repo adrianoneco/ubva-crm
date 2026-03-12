@@ -40,6 +40,43 @@ export default function ContactsPage() {
   const [modalContact, setModalContact] = useState<Contact | null>(null)
   const [modalAvatarFile, setModalAvatarFile] = useState<File | null>(null)
   const [triggerInstallBot, setTriggerInstallBot] = useState(false)
+  const [phoneType, setPhoneType] = useState<'celular' | 'telefone'>('celular')
+  const [phoneValue, setPhoneValue] = useState('')
+
+  const formatPhone = (digits: string, type: 'celular' | 'telefone') => {
+    const d = digits.replace(/\D/g, '')
+    if (type === 'celular') {
+      // (00) 0 0000-0000 — max 11 digits
+      const s = d.slice(0, 11)
+      if (s.length <= 2) return s.length ? `(${s}` : ''
+      if (s.length <= 3) return `(${s.slice(0, 2)}) ${s.slice(2)}`
+      if (s.length <= 7) return `(${s.slice(0, 2)}) ${s.slice(2, 3)} ${s.slice(3)}`
+      return `(${s.slice(0, 2)}) ${s.slice(2, 3)} ${s.slice(3, 7)}-${s.slice(7)}`
+    } else {
+      // (00) 0000-0000 — max 10 digits
+      const s = d.slice(0, 10)
+      if (s.length <= 2) return s.length ? `(${s}` : ''
+      if (s.length <= 6) return `(${s.slice(0, 2)}) ${s.slice(2)}`
+      return `(${s.slice(0, 2)}) ${s.slice(2, 6)}-${s.slice(6)}`
+    }
+  }
+
+  const handlePhoneInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, '')
+    setPhoneValue(formatPhone(digits, phoneType))
+  }
+
+  const handlePhoneBlur = () => {
+    const digits = phoneValue.replace(/\D/g, '')
+    const expected = phoneType === 'celular' ? 11 : 10
+    if (digits.length > 0 && digits.length < expected) setPhoneValue('')
+  }
+
+  const handlePhoneTypeChange = (type: 'celular' | 'telefone') => {
+    setPhoneType(type)
+    const digits = phoneValue.replace(/\D/g, '')
+    setPhoneValue(formatPhone(digits, type))
+  }
   const [invalidRows, setInvalidRows] = useState<any[]>([])
   const [showInvalidsTab, setShowInvalidsTab] = useState(false)
 
@@ -54,10 +91,20 @@ export default function ContactsPage() {
     return data
   }
 
-  const openNewModal = () => { setModalContact(null); setModalAvatarFile(null); setTriggerInstallBot(false); setShowModal(true) }
-  const openEditModal = (c: Contact) => { setModalContact(c); setModalAvatarFile(null); setTriggerInstallBot(false); setShowModal(true) }
+  const openNewModal = () => { setModalContact(null); setModalAvatarFile(null); setTriggerInstallBot(false); setPhoneType('celular'); setPhoneValue(''); setShowModal(true) }
+  const openEditModal = (c: Contact) => {
+    setModalContact(c)
+    setModalAvatarFile(null)
+    setTriggerInstallBot(false)
+    // Detect type from existing phone digits
+    const digits = (c.phone || '').replace(/\D/g, '')
+    const t = digits.length <= 10 ? 'telefone' : 'celular'
+    setPhoneType(t)
+    setPhoneValue(formatPhone(digits, t))
+    setShowModal(true)
+  }
 
-  const handleModalCancel = () => { setShowModal(false); setModalContact(null); setModalAvatarFile(null); setTriggerInstallBot(false) }
+  const handleModalCancel = () => { setShowModal(false); setModalContact(null); setModalAvatarFile(null); setTriggerInstallBot(false); setPhoneType('celular'); setPhoneValue('') }
 
   const handleModalSave = async (e: any) => {
     e.preventDefault()
@@ -65,7 +112,7 @@ export default function ContactsPage() {
     const payload = {
       name: form.name.value,
       email: form.email.value || null,
-      phone: form.phone.value || null,
+      phone: phoneValue || null,
       company: form.company.value || null,
       type: form.type.value || 'default',
       triggerInstallBot: triggerInstallBot,
@@ -90,6 +137,8 @@ export default function ContactsPage() {
     setModalContact(null)
     setModalAvatarFile(null)
     setTriggerInstallBot(false)
+    setPhoneType('celular')
+    setPhoneValue('')
     fetchContacts()
   }
 
@@ -609,8 +658,43 @@ export default function ContactsPage() {
                   <input name="email" defaultValue={modalContact?.email || ''} placeholder="email@example.com" className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white text-sm" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Telefone</label>
-                  <input name="phone" defaultValue={modalContact?.phone || ''} placeholder="(11) 98765-4321" className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white text-sm" />
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Tipo de Telefone</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handlePhoneTypeChange('celular')}
+                      className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        phoneType === 'celular'
+                          ? 'bg-primary-500 border-primary-500 text-white'
+                          : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      Celular
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePhoneTypeChange('telefone')}
+                      className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        phoneType === 'telefone'
+                          ? 'bg-primary-500 border-primary-500 text-white'
+                          : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      Telefone
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Número</label>
+                  <input
+                    name="phone"
+                    value={phoneValue}
+                    onChange={handlePhoneInput}
+                    onBlur={handlePhoneBlur}
+                    placeholder={phoneType === 'celular' ? '(11) 9 8765-4321' : '(11) 3456-7890'}
+                    inputMode="numeric"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white text-sm"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Empresa</label>

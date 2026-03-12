@@ -44,7 +44,11 @@ router.post('/', async (req, res) => {
           const instanceId = process.env.ZAPI_INSTSANCE_ID || process.env.ZAPI_INSTANCE_ID || ''
 
           const url = `${n8nBase}?clientSecret=${encodeURIComponent(clientSecret)}&inverTextoToken=${encodeURIComponent(inverTextoToken)}`
+          let phone = contact.phone;
 
+          if (contact.phone?.length == 11) {
+            phone = `55${contact.phone}`;
+          }
           const payload = JSON.stringify({
             phone: contact.phone || null,
             instanceId: instanceId,
